@@ -1,0 +1,69 @@
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · TechToss</title>
+<link rel="stylesheet" href="/static/techtoss.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><span class="dot"></span>TECH&middot;TOSS</a>
+    <nav class="nav">
+      <a href="/"          class="{{if eq .Active "machines"}}active{{end}}">Workbench</a>
+      <a href="/inventory" class="{{if eq .Active "inventory"}}active{{end}}">Inventory</a>
+      <a href="/search"    class="{{if eq .Active "search"}}active{{end}}">Search</a>
+    </nav>
+  </div>
+</header>
+<main>
+{{end}}
+
+{{define "foot"}}
+</main>
+<script>
+// Live search-as-you-type. Runs only if the search input is present.
+(function () {
+  var input = document.getElementById('searchInput');
+  if (!input) return;
+  var box = document.getElementById('liveResults');
+  var timer = null;
+
+  function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function render(data) {
+    if (!data.query) { box.innerHTML = ''; return; }
+    if (!data.rows.length) {
+      box.innerHTML = '<div class="live-empty">No machines or parts match &ldquo;' + esc(data.query) + '&rdquo;.</div>';
+      return;
+    }
+    box.innerHTML = data.rows.map(function (r) {
+      return '<a class="live-row" href="' + r.href + '">' + row(r) + '</a>';
+    }).join('');
+  }
+  function row(r){
+    return '<span class="kind ' + r.kind + '">' + r.kind + '</span>' +
+      '<span class="lr-title">' + esc(r.title || '(untitled)') + '</span>' +
+      '<span class="lr-sub">' + esc(r.subtitle) + '</span>' +
+      (r.badge ? '<span class="lr-badge">' + esc(r.badge) + '</span>' : '');
+  }
+
+  function run() {
+    var q = input.value.trim();
+    fetch('/api/live?q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () {});
+  }
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(run, 120);
+  });
+  if (input.value.trim()) run();
+})();
+</script>
+</body>
+</html>
+{{end}}

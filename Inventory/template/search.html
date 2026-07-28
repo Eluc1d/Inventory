@@ -1,0 +1,47 @@
+{{template "head" .}}
+<div class="page-head">
+  <div>
+    <h1>Search</h1>
+    <div class="sub">Machines and parts — try &ldquo;RTX&rdquo;, &ldquo;16GB DDR4&rdquo;, &ldquo;faulty psu&rdquo;, or a status.</div>
+  </div>
+</div>
+
+<div class="searchbar">
+  <input id="searchInput" type="search" autocomplete="off" autofocus
+         placeholder="Search machines and parts…"
+         value="{{with .Data}}{{.Query}}{{end}}">
+</div>
+<div class="live-results" id="liveResults"></div>
+
+{{with .Data}}
+{{if and .Query (not .Results)}}
+<div class="live-empty">No machines or parts match &ldquo;{{.Query}}&rdquo;.</div>
+{{end}}
+{{end}}
+
+<noscript>
+  {{with .Data}}
+  {{if .Results}}
+  <div class="live-results" style="margin-top:14px">
+    {{range .Results}}
+      {{if eq .Kind "machine"}}
+      <a class="live-row" href="/machine?id={{.Machine.Id}}">
+        <span class="kind machine">machine</span>
+        <span class="lr-title">{{.Machine.Name}}</span>
+        <span class="lr-sub">{{.Machine.Type}}</span>
+        <span class="lr-badge">{{.Machine.Status}}</span>
+      </a>
+      {{else}}
+      <a class="live-row" href="{{if .Part.MachineId}}/machine?id={{.Part.MachineId}}{{else}}/inventory{{end}}">
+        <span class="kind part">part</span>
+        <span class="lr-title">{{.Part.Model}}</span>
+        <span class="lr-sub">{{.Part.Category}}</span>
+        <span class="lr-badge">{{.Part.Condition}}</span>
+      </a>
+      {{end}}
+    {{end}}
+  </div>
+  {{end}}
+  {{end}}
+</noscript>
+{{template "foot" .}}

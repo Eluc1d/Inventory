@@ -1,0 +1,70 @@
+{{template "head" .}}
+{{$editable := .Editable}}
+{{with .Data}}
+<div class="crumb"><a href="/">Workbench</a> / {{.Asset}}</div>
+
+<div class="page-head">
+  <div>
+    <div class="asset mono" style="color:var(--ink-soft);font-size:13px;letter-spacing:.08em">{{.Asset}}</div>
+    <h1>{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</h1>
+    <div class="sub">
+      <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
+    </div>
+  </div>
+  {{if $editable}}<a class="btn ghost" href="/machine/edit?id={{.Id}}">Edit machine</a>{{end}}
+</div>
+
+<div class="panel">
+  <div class="specs">
+    <div class="spec"><div class="k">Type</div><div class="v">{{if .Type}}{{.Type}}{{else}}&mdash;{{end}}</div></div>
+    <div class="spec"><div class="k">Condition</div><div class="v">{{if .Condition}}{{.Condition}}{{else}}&mdash;{{end}}</div></div>
+    <div class="spec"><div class="k">Location</div><div class="v mono">{{if .Location}}{{.Location}}{{else}}&mdash;{{end}}</div></div>
+    <div class="spec"><div class="k">Parts</div><div class="v mono">{{len .Parts}}</div></div>
+  </div>
+  {{if .Notes}}<div style="margin-top:16px"><div class="spec"><div class="k">Notes</div><div class="v">{{.Notes}}</div></div></div>{{end}}
+</div>
+
+<div class="panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <h2 style="margin:0">Installed parts</h2>
+    {{if $editable}}<a class="btn small" href="/part/edit?id=new&machine={{.Id}}">+ Add part</a>{{end}}
+  </div>
+
+  {{if .Parts}}
+  <table class="parts-table" style="margin-top:12px">
+    <thead>
+      <tr>
+        <th>Category</th><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th>
+        {{if $editable}}<th></th>{{end}}
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Parts}}
+      <tr>
+        <td><span class="cat">{{if .Category}}{{.Category}}{{else}}?{{end}}</span></td>
+        <td>
+          <div class="model">{{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</div>
+          {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
+        </td>
+        <td class="qty">{{.Quantity}}&times;</td>
+        <td><span class="cond {{lower .Condition}}">{{if .Condition}}{{.Condition}}{{else}}Untested{{end}}</span></td>
+        {{if $editable}}
+        <td style="white-space:nowrap">
+          <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
+          <form method="post" action="/part/delete" style="display:inline"
+                onsubmit="return confirm('Remove this part?')">
+            <input type="hidden" name="id" value="{{.Id}}">
+            <button class="btn danger small" type="submit">Remove</button>
+          </form>
+        </td>
+        {{end}}
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="sub" style="margin-top:12px">No parts recorded for this machine yet.</p>
+  {{end}}
+</div>
+{{end}}
+{{template "foot" .}}

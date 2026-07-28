@@ -1,0 +1,44 @@
+{{template "head" .}}
+{{$editable := .Editable}}
+{{with .Data}}
+<div class="page-head">
+  <div>
+    <h1>Workbench</h1>
+    <div class="sub">{{.Total}} machine{{if ne .Total 1}}s{{end}} tracked · {{.LooseCount}} loose part{{if ne .LooseCount 1}}s{{end}} in inventory</div>
+  </div>
+  {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
+</div>
+
+<div class="status-strip">
+  <a class="status-pill" href="/">All <span class="n">{{.Total}}</span></a>
+  {{range .Statuses}}
+    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}">
+      <span class="swatch" style="background:var(--st-accent)"></span>
+      {{.}} <span class="n">{{index $.Data.Counts .}}</span>
+    </a>
+  {{end}}
+</div>
+
+{{if .Machines}}
+<div class="tag-grid">
+  {{range .Machines}}
+  <a class="tag s-{{statusSlug .Status}}" href="/machine?id={{.Id}}">
+    <div class="asset">{{.Asset}}</div>
+    <div class="name">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</div>
+    <div class="meta">
+      {{if .Type}}<span class="type">{{.Type}}</span>{{end}}
+      <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
+      {{if .Location}}<span>{{.Location}}</span>{{end}}
+    </div>
+  </a>
+  {{end}}
+</div>
+{{else}}
+<div class="empty">
+  <h3>Nothing on the bench yet</h3>
+  <p>Log the first machine that came in to start tracking it and its parts.</p>
+  {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
+</div>
+{{end}}
+{{end}}
+{{template "foot" .}}

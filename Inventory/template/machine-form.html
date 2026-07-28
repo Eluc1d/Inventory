@@ -1,0 +1,64 @@
+{{template "head" .}}
+{{with .Data}}
+{{$m := .Machine}}
+<div class="crumb">
+  <a href="/">Workbench</a> /
+  {{if .IsNew}}New machine{{else}}<a href="/machine?id={{$m.Id}}">{{$m.Asset}}</a> / Edit{{end}}
+</div>
+
+<div class="page-head">
+  <h1>{{if .IsNew}}Log a machine{{else}}Edit {{$m.Asset}}{{end}}</h1>
+</div>
+
+<form class="stack" method="post"
+      action="/machine/edit?id={{if .IsNew}}new{{else}}{{$m.Id}}{{end}}">
+  <div class="field">
+    <label for="name">Name</label>
+    <input id="name" name="name" value="{{$m.Name}}" placeholder="e.g. Dell OptiPlex 7060" autofocus>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="type">Type</label>
+      <input id="type" name="type" value="{{$m.Type}}" list="typeList" placeholder="Desktop">
+      <datalist id="typeList">
+        <option>Desktop</option><option>Laptop</option><option>Server</option>
+        <option>All-in-One</option><option>Mini PC</option><option>Workstation</option>
+      </datalist>
+    </div>
+    <div class="field">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        {{range machineStatuses}}
+        <option value="{{.}}" {{if eq . $m.Status}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="condition">Condition</label>
+      <input id="condition" name="condition" value="{{$m.Condition}}" list="condList" placeholder="Good">
+      <datalist id="condList">
+        <option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option>
+      </datalist>
+    </div>
+    <div class="field mono">
+      <label for="location">Location</label>
+      <input id="location" name="location" value="{{$m.Location}}" placeholder="Bench 1 / Shelf A">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" placeholder="Symptoms, history, next steps…">{{$m.Notes}}</textarea>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">{{if .IsNew}}Create machine{{else}}Save changes{{end}}</button>
+    <a class="btn ghost" href="{{if .IsNew}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
+  </div>
+</form>
+{{end}}
+{{template "foot" .}}

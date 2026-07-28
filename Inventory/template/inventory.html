@@ -1,0 +1,53 @@
+{{template "head" .}}
+{{$editable := .Editable}}
+{{with .Data}}
+<div class="page-head">
+  <div>
+    <h1>Parts inventory</h1>
+    <div class="sub">{{.Total}} loose part line{{if ne .Total 1}}s{{end}} not currently installed in a machine</div>
+  </div>
+  {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
+</div>
+
+{{if .Groups}}
+  {{range .Groups}}
+  <div class="panel">
+    <div class="inv-cat">{{.Category}} <span class="units">· {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
+    <table class="parts-table">
+      <thead>
+        <tr><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th>{{if $editable}}<th></th>{{end}}</tr>
+      </thead>
+      <tbody>
+        {{range .Parts}}
+        <tr>
+          <td>
+            <div class="model">{{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</div>
+            {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
+          </td>
+          <td class="qty">{{.Quantity}}&times;</td>
+          <td><span class="cond {{lower .Condition}}">{{if .Condition}}{{.Condition}}{{else}}Untested{{end}}</span></td>
+          {{if $editable}}
+          <td style="white-space:nowrap">
+            <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
+            <form method="post" action="/part/delete" style="display:inline"
+                  onsubmit="return confirm('Delete this part?')">
+              <input type="hidden" name="id" value="{{.Id}}">
+              <button class="btn danger small" type="submit">Delete</button>
+            </form>
+          </td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+{{else}}
+<div class="empty">
+  <h3>No loose parts yet</h3>
+  <p>Harvested components that aren&rsquo;t installed in a machine show up here. Add one, or reassign a part from a machine to &ldquo;loose inventory&rdquo;.</p>
+  {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
+</div>
+{{end}}
+{{end}}
+{{template "foot" .}}

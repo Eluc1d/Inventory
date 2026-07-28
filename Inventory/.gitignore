@@ -1,0 +1,13 @@
+# Build output
+/techtoss
+
+# Databases
+*.db
+*.db-journal
+*.db-wal
+
+# Logs
+*.log
+
+# Editor/OS cruft
+.DS_Store

@@ -1,0 +1,76 @@
+{{template "head" .}}
+{{with .Data}}
+{{$p := .Part}}
+<div class="crumb">
+  {{if .Machine}}<a href="/machine?id={{.Machine.Id}}">{{.Machine.Asset}} {{.Machine.Name}}</a>{{else}}<a href="/inventory">Inventory</a>{{end}}
+  / {{if .IsNew}}Add part{{else}}Edit part{{end}}
+</div>
+
+<div class="page-head">
+  <h1>{{if .IsNew}}Add a part{{else}}Edit part{{end}}</h1>
+</div>
+
+<form class="stack" method="post"
+      action="/part/edit?id={{if .IsNew}}new{{else}}{{$p.Id}}{{end}}">
+
+  <div class="field">
+    <label for="machine_id">Assigned to</label>
+    <select id="machine_id" name="machine_id">
+      <option value="0" {{if eq $p.MachineId 0}}selected{{end}}>— Loose inventory (not in a machine) —</option>
+      {{range .Machines}}
+      <option value="{{.Id}}" {{if eq .Id $p.MachineId}}selected{{end}}>{{.Asset}} · {{.Name}}</option>
+      {{end}}
+    </select>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="category">Category</label>
+      <input id="category" name="category" value="{{$p.Category}}" list="catList" placeholder="RAM" autofocus>
+      <datalist id="catList">
+        {{range partCategories}}<option>{{.}}</option>{{end}}
+      </datalist>
+    </div>
+    <div class="field">
+      <label for="condition">Condition</label>
+      <select id="condition" name="condition">
+        {{range partConditions}}
+        <option value="{{.}}" {{if eq . $p.Condition}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="model">Model</label>
+    <input id="model" name="model" value="{{$p.Model}}" placeholder="e.g. Corsair Vengeance 16GB DDR4-3200">
+  </div>
+
+  <div class="field">
+    <label for="spec">Spec / details</label>
+    <input id="spec" name="spec" value="{{$p.Spec}}" placeholder="e.g. 2x8GB, CL16, tested with MemTest">
+  </div>
+
+  <div class="form-row">
+    <div class="field mono">
+      <label for="quantity">Quantity</label>
+      <input id="quantity" name="quantity" type="number" min="1" value="{{$p.Quantity}}">
+    </div>
+    <div class="field mono">
+      <label for="serial">Serial (optional)</label>
+      <input id="serial" name="serial" value="{{$p.Serial}}">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" placeholder="Anything worth remembering about this part…">{{$p.Notes}}</textarea>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">{{if .IsNew}}Add part{{else}}Save changes{{end}}</button>
+    <a class="btn ghost" href="{{if .Machine}}/machine?id={{.Machine.Id}}{{else}}/inventory{{end}}">Cancel</a>
+  </div>
+</form>
+{{end}}
+{{template "foot" .}}
