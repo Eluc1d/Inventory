@@ -29,7 +29,7 @@ func normalize(s string) string {
 
 func (s *Search) UpdateMachine(m *Machine) {
 	hay := normalize(strings.Join([]string{
-		m.Asset, m.Name, m.Type, m.Status, m.Condition, m.Location, m.Notes,
+		m.Asset, m.Name, m.Type, m.Status, m.Condition, m.Facility, m.SubLocation, m.Notes,
 	}, " "))
 	s.mu.Lock()
 	s.machines[m.Id] = hay

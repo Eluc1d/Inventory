@@ -5,16 +5,17 @@ import "time"
 // Machine is a computer that has come through TechToss. It moves through a
 // workflow (see MachineStatuses) and contains Parts.
 type Machine struct {
-	Id        int       `json:"id"`
-	Asset     string    `json:"asset"` // human-facing asset tag, e.g. "TT-0007"
-	Name      string    `json:"name"`  // short label, e.g. "Dell OptiPlex 7060"
-	Type      string    `json:"type"`  // Desktop, Laptop, Server, ...
-	Status    string    `json:"status"`
-	Condition string    `json:"condition,omitempty"`
-	Location  string    `json:"location,omitempty"`
-	Notes     string    `json:"notes,omitempty"`
-	Created   time.Time `json:"created,omitempty"`
-	Updated   time.Time `json:"updated,omitempty"`
+	Id          int       `json:"id"`
+	Asset       string    `json:"asset"` // human-facing asset tag, e.g. "TT-0007"
+	Name        string    `json:"name"`  // short label, e.g. "Dell OptiPlex 7060"
+	Type        string    `json:"type"`  // Desktop, Laptop, Server, ...
+	Status      string    `json:"status"`
+	Condition   string    `json:"condition,omitempty"`
+	Facility    string    `json:"facility"`
+	SubLocation string    `json:"sub_location"`
+	Notes       string    `json:"notes,omitempty"`
+	Created     time.Time `json:"created,omitempty"`
+	Updated     time.Time `json:"updated,omitempty"`
 
 	// Populated on demand by handlers; not stored on the machine row.
 	Parts []*Part `json:"parts,omitempty"`
@@ -35,6 +36,20 @@ type Part struct {
 	Notes     string    `json:"notes,omitempty"`
 	Created   time.Time `json:"created,omitempty"`
 	Updated   time.Time `json:"updated,omitempty"`
+}
+
+var FacilityOptions = []string{
+	"Workshop",
+	"Bruce's Storage",
+	"Connor's Garage",
+	"Almond Orchard",
+}
+
+var SubLocationsByFacility = map[string][]string{
+	"Workshop":        {"Rack A", "Rack B", "Shelf 1"},
+	"Bruce's Storage": {"Floor"},
+	"Connor's Garage": {"Floor"},
+	"Almond Orchard":  {"Floor"},
 }
 
 // The canonical workflow a machine moves through. Order matters: it is used to

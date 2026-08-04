@@ -28,7 +28,11 @@
     <div class="meta">
       {{if .Type}}<span class="type">{{.Type}}</span>{{end}}
       <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
-      {{if .Location}}<span>{{.Location}}</span>{{end}}
+      {{if or .Facility .SubLocation}}
+    <span>
+      {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
+    </span>
+{{end}}
     </div>
   </a>
   {{end}}

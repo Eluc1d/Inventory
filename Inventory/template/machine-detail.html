@@ -18,7 +18,13 @@
   <div class="specs">
     <div class="spec"><div class="k">Type</div><div class="v">{{if .Type}}{{.Type}}{{else}}&mdash;{{end}}</div></div>
     <div class="spec"><div class="k">Condition</div><div class="v">{{if .Condition}}{{.Condition}}{{else}}&mdash;{{end}}</div></div>
-    <div class="spec"><div class="k">Location</div><div class="v mono">{{if .Location}}{{.Location}}{{else}}&mdash;{{end}}</div></div>
+    <div class="spec"><div class="k">Location</div><div class="v mono">
+      {{if or .Facility .SubLocation}}
+        {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
+      {{else}}
+        &mdash;
+      {{end}}
+    </div></div>
     <div class="spec"><div class="k">Parts</div><div class="v mono">{{len .Parts}}</div></div>
   </div>
   {{if .Notes}}<div style="margin-top:16px"><div class="spec"><div class="k">Notes</div><div class="v">{{.Notes}}</div></div></div>{{end}}
