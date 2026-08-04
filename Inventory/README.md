@@ -25,18 +25,20 @@ Adapted from Henner Zeller's [stuff-org](https://github.com/hzeller/stuff-org).
 Requires Go 1.21+ and a C toolchain (the SQLite driver uses cgo).
 
 ```sh
-make            # build ./techtoss
-./techtoss      # serve on http://localhost:2000
+docker compose up --build
 ```
+Wait until it says something along the lines of "TechToss listening on ':2000'"
 
 First run creates `techtoss.db` automatically. To start with a few example
 machines and parts so the UI isn't empty:
 
-```sh
-./techtoss -seed
-```
-
 Then open <http://localhost:2000/>.
+
+To close
+
+```sh
+docker compose down
+```
 
 ## Options
 
