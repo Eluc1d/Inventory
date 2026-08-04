@@ -137,6 +137,14 @@ func (h *Handlers) machineDetail(w http.ResponseWriter, r *http.Request) {
 
 // ------------------------------------------------------------ machine edit
 
+type machineFormData struct {
+	Machine                *Machine
+	IsNew                  bool
+	FacilityOptions        []string
+	SubLocationsByFacility map[string][]string
+	MachineStatuses        []string
+}
+
 func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 	if !h.canEdit(r) {
 		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
@@ -151,7 +159,8 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			m.Type = strings.TrimSpace(r.FormValue("type"))
 			m.Status = strings.TrimSpace(r.FormValue("status"))
 			m.Condition = strings.TrimSpace(r.FormValue("condition"))
-			m.Location = strings.TrimSpace(r.FormValue("location"))
+			m.Facility = strings.TrimSpace(r.FormValue("facility"))
+			m.SubLocation = strings.TrimSpace(r.FormValue("sub_location"))
 			m.Notes = strings.TrimSpace(r.FormValue("notes"))
 			return true
 		}
@@ -179,14 +188,18 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			m = found
 		}
 	}
+	formData := machineFormData{
+		Machine:                m,
+		IsNew:                  isNew,
+		FacilityOptions:        FacilityOptions,
+		SubLocationsByFacility: SubLocationsByFacility,
+		MachineStatuses:        MachineStatuses,
+	}
 	h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
 		Title:    "Edit machine",
 		Editable: true,
 		Active:   "machines",
-		Data: struct {
-			Machine *Machine
-			IsNew   bool
-		}{m, isNew},
+		Data:     formData,
 	})
 }
 

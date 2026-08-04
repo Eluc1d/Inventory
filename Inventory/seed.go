@@ -15,12 +15,12 @@ func seedIfEmpty(store Store) {
 		qty                              int
 	}
 	examples := []struct {
-		name, typ, status, condition, location, notes string
-		parts                                         []partSpec
+		name, typ, status, condition, facility, sub_location, notes string
+		parts                                                       []partSpec
 	}{
 		{
 			name: "Dell OptiPlex 7060", typ: "Desktop", status: "Testing",
-			condition: "Good", location: "Bench 1",
+			condition: "Good", facility: "Workshop", sub_location: "Rack A",
 			notes: "Donated batch #4. Boots, needs memtest.",
 			parts: []partSpec{
 				{"CPU", "Intel Core i5-8500", "6c/6t, 3.0GHz", "Working", 1},
@@ -31,7 +31,7 @@ func seedIfEmpty(store Store) {
 		},
 		{
 			name: "Custom Gaming Tower", typ: "Desktop", status: "Repair",
-			condition: "Fair", location: "Bench 2",
+			condition: "Fair", facility: "Workshop", sub_location: "Rack B",
 			notes: "No POST. Suspect GPU or PSU.",
 			parts: []partSpec{
 				{"GPU", "NVIDIA RTX 2060", "6GB GDDR6", "Faulty", 1},
@@ -41,7 +41,7 @@ func seedIfEmpty(store Store) {
 		},
 		{
 			name: "ThinkPad T480", typ: "Laptop", status: "Refurbished",
-			condition: "Excellent", location: "Shelf A",
+			condition: "Excellent", facility: "Bruce's Storage", sub_location: "Floor",
 			notes: "Ready for sale. New battery installed.",
 			parts: []partSpec{
 				{"CPU", "Intel Core i7-8650U", "4c/8t", "Working", 1},
@@ -57,7 +57,8 @@ func seedIfEmpty(store Store) {
 			m.Type = ex.typ
 			m.Status = ex.status
 			m.Condition = ex.condition
-			m.Location = ex.location
+			m.Facility = ex.facility
+			m.SubLocation = ex.sub_location
 			m.Notes = ex.notes
 			return true
 		})
