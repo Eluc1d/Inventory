@@ -1,0 +1,20 @@
+services:
+  techtoss:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "2000:2000"
+    volumes:
+      - .:/app
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - "*.db"
+            - "*.sqlite"
+            - tmp/
+            - vendor/

@@ -15,6 +15,15 @@ COPY --from=build /techtoss /app/techtoss
 COPY template ./template
 COPY static ./static
 
+# Install air for development
+FROM golang:1.22-bookworm AS dev
+RUN go install github.com/cosmtrek/air@v1.52.0
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY template ./template
+COPY static ./static
+
 EXPOSE 2000
-# Override flags after the image name, e.g. -dbfile /data/techtoss.db
-ENTRYPOINT ["/app/techtoss"]
+CMD ["air", "-c", ".air.toml"]

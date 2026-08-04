@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./techtoss ."
+  bin = "./techtoss"
+  include_ext = ["go", "html", "tpl", "tmpl"]
+  exclude_ext = ["sql", "sqlite", "db"]
+  poll = true
+  delay = 1000
+  send_interrupt = true
+
+[color]
+  app = ""
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
