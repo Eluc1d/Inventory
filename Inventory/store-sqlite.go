@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -63,6 +64,11 @@ func NewSqlStore(db *sql.DB) (*SqlStore, error) {
 	if _, err := db.Exec(createSchema); err != nil {
 		return nil, err
 	}
+
+	if err := ensureMachineColumns(db); err != nil {
+		return nil, err
+	}
+
 	// SQLite ignores FK constraints unless asked.
 	db.Exec("PRAGMA foreign_keys = ON")
 
@@ -80,6 +86,20 @@ func NewSqlStore(db *sql.DB) (*SqlStore, error) {
 	}
 	log.Printf("Search index warmed: %d machines, %d parts", nm, np)
 	return s, nil
+}
+
+func ensureMachineColumns(db *sql.DB) error {
+	_, err := db.Exec(`ALTER TABLE machine ADD COLUMN facility varchar(60)`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
+	_, err = db.Exec(`ALTER TABLE machine ADD COLUMN sub_location varchar(60)`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
+	return nil
 }
 
 // ---------------------------------------------------------------- machines
@@ -159,7 +179,7 @@ func (d *SqlStore) CreateMachine(updater ModifyMachine) (*Machine, string) {
 	}
 	now := time.Now()
 	res, err := d.db.Exec(
-		"INSERT INTO machine (name, type, status, condition, facility, sub_location, notes, created, updated) VALUES (?,?,?,?,?,?,?,?,?,?)",
+		"INSERT INTO machine (name, type, status, condition, facility, sub_location, notes, created, updated) VALUES (?,?,?,?,?,?,?,?,?)",
 		str(m.Name), str(m.Type), str(m.Status), str(m.Condition), str(m.Facility), str(m.SubLocation), str(m.Notes), now, now)
 	if err != nil {
 		return nil, err.Error()
