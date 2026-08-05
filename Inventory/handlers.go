@@ -62,6 +62,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/", h.dashboard)
 	mux.HandleFunc("/machine", h.machineDetail)
 	mux.HandleFunc("/machine/edit", h.machineEdit)
+	mux.HandleFunc("/machine/delete", h.machineDelete)
 	mux.HandleFunc("/inventory", h.inventory)
 	mux.HandleFunc("/part/edit", h.partEdit)
 	mux.HandleFunc("/part/delete", h.partDelete)
@@ -324,6 +325,22 @@ func (h *Handlers) partDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	h.store.DeletePart(id)
 	redirectAfterPart(w, r, machineId)
+}
+
+func (h *Handlers) machineDelete(w http.ResponseWriter, r *http.Request) {
+	if !h.canEdit(r) {
+		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	id := atoiDefault(r.FormValue("id"), 0)
+	if ok, _ := h.store.DeleteMachine(id); !ok {
+		log.Printf("machineDelete: failed to delete machine %d", id)
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func redirectAfterPart(w http.ResponseWriter, r *http.Request, machineId int) {

@@ -110,6 +110,9 @@ type Store interface {
 	EditMachine(id int, updater ModifyMachine) (bool, string)
 	CreateMachine(updater ModifyMachine) (*Machine, string)
 	AllMachines() []*Machine
+	// DeleteMachine removes a machine and its installed parts. It returns the
+	// number of parts that were removed along with it.
+	DeleteMachine(id int) (ok bool, partsRemoved int)
 
 	// --- Parts ---
 	FindPart(id int) *Part

@@ -45,6 +45,12 @@ func (s *Search) UpdatePart(p *Part) {
 	s.mu.Unlock()
 }
 
+func (s *Search) RemoveMachine(id int) {
+	s.mu.Lock()
+	delete(s.machines, id)
+	s.mu.Unlock()
+}
+
 func (s *Search) RemovePart(id int) {
 	s.mu.Lock()
 	delete(s.parts, id)

@@ -114,5 +114,16 @@
     <a class="btn ghost" href="{{if .IsNew}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
   </div>
 </form>
+
+{{if not .IsNew}}
+<div class="danger-zone">
+  <span class="hint">Deleting removes this machine and any parts still installed in it. This cannot be undone.</span>
+  <form method="post" action="/machine/delete"
+        onsubmit="return confirm('Delete {{$m.Asset}}? This also deletes any parts still installed in it and cannot be undone.');">
+    <input type="hidden" name="id" value="{{$m.Id}}">
+    <button class="btn danger" type="submit">Delete machine</button>
+  </form>
+</div>
+{{end}}
 {{end}}
 {{template "foot" .}}

@@ -333,6 +333,20 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .field.mono input { font-family: var(--mono); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Destructive action area at the bottom of the edit form. */
+.danger-zone {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.danger-zone .hint { font-size: 13px; color: var(--ink-soft); }
 
 /* --------------------------------------------------------------- search */
 

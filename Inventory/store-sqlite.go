@@ -373,6 +373,28 @@ func (d *SqlStore) DeletePart(id int) bool {
 	return true
 }
 
+// DeleteMachine removes a machine and any parts installed in it. Parts you want
+// to keep should first be reassigned to loose inventory (machine 0) via the part
+// edit form; anything still attached is deleted with the machine.
+func (d *SqlStore) DeleteMachine(id int) (bool, int) {
+	// Capture the installed parts up front so we can drop them from the search
+	// index after the rows are gone.
+	parts := d.PartsForMachine(id)
+
+	if _, err := d.db.Exec("DELETE FROM part WHERE machine_id=?", id); err != nil {
+		return false, 0
+	}
+	if _, err := d.db.Exec("DELETE FROM machine WHERE id=?", id); err != nil {
+		return false, 0
+	}
+
+	for _, p := range parts {
+		d.fts.RemovePart(p.Id)
+	}
+	d.fts.RemoveMachine(id)
+	return true, len(parts)
+}
+
 func (d *SqlStore) Search(term string) *SearchResult {
 	return d.fts.Search(term, d)
 }
