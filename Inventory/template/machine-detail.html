@@ -11,7 +11,16 @@
       <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
     </div>
   </div>
-  {{if $editable}}<a class="btn ghost" href="/machine/edit?id={{.Id}}">Edit machine</a>{{end}}
+  {{if $editable}}
+  <div class="head-actions">
+    <a class="btn ghost" href="/machine/edit?id={{.Id}}">Edit machine</a>
+    <form method="post" action="/machine/delete" style="display:inline"
+          onsubmit="return confirm('Delete {{.Asset}} and its {{len .Parts}} installed part(s)? This cannot be undone.\n\nTo keep any parts, cancel and reassign them to loose inventory first.');">
+      <input type="hidden" name="id" value="{{.Id}}">
+      <button class="btn danger" type="submit">Delete machine</button>
+    </form>
+  </div>
+  {{end}}
 </div>
 
 <div class="panel">
