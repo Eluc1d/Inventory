@@ -68,6 +68,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/part/edit", h.partEdit)
 	mux.HandleFunc("/part/delete", h.partDelete)
 	mux.HandleFunc("/part/unassign", h.partUnassign)
+	mux.HandleFunc("/part/pull", h.partPull)
 }
 
 // ------------------------------------------------------------- dashboard
@@ -174,12 +175,7 @@ func (h *Handlers) applyStagedParts(r *http.Request, machineId int) {
 			if row.ExistingId == 0 {
 				continue
 			}
-			if ok, errStr := h.store.EditPart(row.ExistingId, func(p *Part) bool {
-				p.MachineId = machineId
-				return true
-			}); !ok && errStr != "" && errStr != "no change" {
-				log.Printf("applyStagedParts: reassign part %d: %s", row.ExistingId, errStr)
-			}
+			h.pullPartOntoMachine(row.ExistingId, machineId, row.Quantity)
 		case "new":
 			category := strings.TrimSpace(row.Category)
 			model := strings.TrimSpace(row.Model)
@@ -202,6 +198,63 @@ func (h *Handlers) applyStagedParts(r *http.Request, machineId int) {
 			}
 		}
 	}
+}
+
+// pullPartOntoMachine moves qty units of loose part sourceId onto machineId.
+// If qty covers the whole line (or is missing/invalid), the part is reassigned
+// outright; otherwise the source line is decremented and a new part row is
+// created on the machine with the requested quantity, so the rest stays put
+// in loose inventory. sourceId not found or machineId == 0 is a no-op.
+func (h *Handlers) pullPartOntoMachine(sourceId, machineId, qty int) {
+	src := h.store.FindPart(sourceId)
+	if src == nil || machineId == 0 {
+		return
+	}
+	if qty < 1 || qty > src.Quantity {
+		qty = src.Quantity
+	}
+	if qty >= src.Quantity {
+		h.store.EditPart(sourceId, func(p *Part) bool {
+			p.MachineId = machineId
+			return true
+		})
+		return
+	}
+	h.store.EditPart(sourceId, func(p *Part) bool {
+		p.Quantity -= qty
+		return true
+	})
+	h.store.CreatePart(func(p *Part) bool {
+		p.MachineId = machineId
+		p.Category = src.Category
+		p.Model = src.Model
+		p.Spec = src.Spec
+		p.Quantity = qty
+		p.Condition = src.Condition
+		p.Serial = src.Serial
+		p.Facility = src.Facility
+		p.SubLocation = src.SubLocation
+		p.Notes = src.Notes
+		return true
+	})
+}
+
+// partPull handles the "Add to machine" picker on part-form.html: pulling a
+// specified quantity of a loose part onto a specific machine.
+func (h *Handlers) partPull(w http.ResponseWriter, r *http.Request) {
+	if !h.canEdit(r) {
+		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+		return
+	}
+	id := atoiDefault(r.FormValue("id"), 0)
+	machineId := atoiDefault(r.FormValue("machine_id"), 0)
+	qty := atoiDefault(r.FormValue("quantity"), 0)
+	h.pullPartOntoMachine(id, machineId, qty)
+	if machineId != 0 {
+		http.Redirect(w, r, "/machine?id="+strconv.Itoa(machineId), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 }
 
 type machineFormData struct {

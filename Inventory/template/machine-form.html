@@ -292,10 +292,15 @@
           return;
         }
         resultsBox.innerHTML = rows.map(function (p) {
+          var qty = p.quantity || 1;
           return '<div class="picker-row" data-id="' + p.id + '">' +
             '<span class="lr-title">' + esc(p.category || '?') + ' &middot; ' + esc(p.model || '(unspecified)') + '</span>' +
             '<span class="lr-sub">' + esc(p.spec || '') + '</span>' +
-            '<span class="lr-badge">' + (p.quantity || 1) + '&times; ' + esc(p.condition || 'Untested') + '</span>' +
+            '<span class="lr-badge">' + qty + '&times; ' + esc(p.condition || 'Untested') + '</span>' +
+            (qty > 1
+              ? '<input type="number" class="picker-qty mono" min="1" max="' + qty + '" value="' + qty + '" title="Quantity to add">'
+              : '') +
+            '<button type="button" class="btn small" data-add="' + p.id + '">Add</button>' +
             '</div>';
         }).join('');
       }
@@ -303,17 +308,22 @@
       filterInput.addEventListener('input', renderInventoryResults);
 
       resultsBox.addEventListener('click', function (e) {
-        var row = e.target.closest('[data-id]');
-        if (!row) return;
-        var id = parseInt(row.getAttribute('data-id'), 10);
+        var btn = e.target.closest('[data-add]');
+        if (!btn) return;
+        var id = parseInt(btn.getAttribute('data-add'), 10);
         var p = inventoryCache.find(function (x) { return x.id === id; });
         if (!p) return;
+        var row = btn.closest('.picker-row');
+        var qtyInput = row.querySelector('.picker-qty');
+        var maxQty = p.quantity || 1;
+        var qty = qtyInput ? Math.max(1, Math.min(parseInt(qtyInput.value, 10) || 1, maxQty)) : maxQty;
+
         stagedExistingIds.add(id);
         staged.push({
           source: 'existing',
           existing_id: id,
           category: p.category, model: p.model, spec: p.spec,
-          quantity: p.quantity, condition: p.condition,
+          quantity: qty, condition: p.condition,
           serial: p.serial, notes: p.notes
         });
         renderStaged();

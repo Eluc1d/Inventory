@@ -21,21 +21,18 @@
   <div id="looseList">
     {{$machine := .Machine}}
     {{range .LooseParts}}
-    <form method="post" action="/part/edit?id={{.Id}}" class="picker-row loose-part-row"
+    <form method="post" action="/part/pull" class="picker-row loose-part-row"
           data-hay="{{lower .Category}} {{lower .Model}} {{lower .Spec}} {{lower .Serial}}">
+      <input type="hidden" name="id" value="{{.Id}}">
       <input type="hidden" name="machine_id" value="{{$machine.Id}}">
-      <input type="hidden" name="category" value="{{.Category}}">
-      <input type="hidden" name="model" value="{{.Model}}">
-      <input type="hidden" name="spec" value="{{.Spec}}">
-      <input type="hidden" name="quantity" value="{{.Quantity}}">
-      <input type="hidden" name="condition" value="{{.Condition}}">
-      <input type="hidden" name="serial" value="{{.Serial}}">
-      <input type="hidden" name="facility" value="{{.Facility}}">
-      <input type="hidden" name="sub_location" value="{{.SubLocation}}">
-      <input type="hidden" name="notes" value="{{.Notes}}">
       <span class="lr-title">{{if .Category}}{{.Category}}{{else}}?{{end}} &middot; {{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</span>
       <span class="lr-sub">{{.Spec}}</span>
       <span class="lr-badge">{{.Quantity}}&times; {{.Condition}}</span>
+      {{if gt .Quantity 1}}
+      <input type="number" name="quantity" class="picker-qty mono" min="1" max="{{.Quantity}}" value="{{.Quantity}}" title="Quantity to add">
+      {{else}}
+      <input type="hidden" name="quantity" value="1">
+      {{end}}
       <button type="submit" class="btn small">Add to machine</button>
     </form>
     {{end}}
