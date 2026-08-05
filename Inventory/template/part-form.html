@@ -19,6 +19,12 @@
   {{end}}
 </div>
 
+{{if .CreatedPartLabel}}
+<div class="flash small success">
+  <p>Part {{.CreatedPartLabel}} added successfully.</p>
+</div>
+{{end}}
+
 <form class="stack" method="post"
       action="/part/edit?id={{if .IsNew}}new{{else}}{{$p.Id}}{{end}}">
 
@@ -138,6 +144,11 @@
 
   <div class="form-actions">
     <button class="btn" type="submit">{{if .IsNew}}Add part{{else}}Save changes{{end}}</button>
+    {{if .IsNew}}
+    <button class="btn" type="submit" name="stay" value="1">
+      Add and stay
+    </button>
+    {{end}}
     <a class="btn ghost" href="{{if .Machine}}/machine?id={{.Machine.Id}}{{else}}/inventory{{end}}">Cancel</a>
   </div>
 </form>

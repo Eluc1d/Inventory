@@ -269,6 +269,14 @@ func (h *Handlers) inventory(w http.ResponseWriter, r *http.Request) {
 
 // --------------------------------------------------------------- part edit
 
+type partFormData struct {
+	Part             *Part
+	IsNew            bool
+	Machine          *Machine
+	Machines         []*Machine
+	CreatedPartLabel string
+}
+
 func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 	if !h.canEdit(r) {
 		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
@@ -278,6 +286,7 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 	isNew := idParam == "" || idParam == "new"
 
 	if r.Method == http.MethodPost {
+		stay := r.FormValue("stay") == "1"
 		apply := func(p *Part) bool {
 			p.MachineId = atoiDefault(r.FormValue("machine_id"), 0)
 			p.Category = strings.TrimSpace(r.FormValue("category"))
@@ -289,6 +298,7 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 			p.Notes = strings.TrimSpace(r.FormValue("notes"))
 			return true
 		}
+
 		var machineId int
 		if isNew {
 			p, errStr := h.store.CreatePart(apply)
@@ -297,6 +307,32 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			machineId = p.MachineId
+
+			if stay {
+				var machine *Machine
+				if p.MachineId != 0 {
+					machine = h.store.FindMachine(p.MachineId)
+				}
+
+				createdLabel := strings.TrimSpace(p.Category + " " + p.Model)
+				if createdLabel == "" {
+					createdLabel = p.Serial
+				}
+
+				h.tmpl.Render(w, http.StatusOK, "part-form.html", &page{
+					Title:    "Add part",
+					Editable: true,
+					Active:   "inventory",
+					Data: partFormData{
+						Part:             p,
+						IsNew:            true,
+						Machine:          machine,
+						Machines:         h.store.AllMachines(),
+						CreatedPartLabel: createdLabel,
+					},
+				})
+				return
+			}
 		} else {
 			id := atoiDefault(idParam, 0)
 			h.store.EditPart(id, apply)
@@ -327,12 +363,12 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 		Title:    "Edit part",
 		Editable: true,
 		Active:   "inventory",
-		Data: struct {
-			Part     *Part
-			IsNew    bool
-			Machine  *Machine
-			Machines []*Machine
-		}{p, isNew, machine, h.store.AllMachines()},
+		Data: partFormData{
+			Part:     p,
+			IsNew:    isNew,
+			Machine:  machine,
+			Machines: h.store.AllMachines(),
+		},
 	})
 }
 
