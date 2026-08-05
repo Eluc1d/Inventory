@@ -145,6 +145,9 @@ type machineFormData struct {
 	FacilityOptions        []string
 	SubLocationsByFacility map[string][]string
 	MachineStatuses        []string
+	SuccessMessage         string
+	CreatedAsset           string
+	CreatedName            string
 }
 
 func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +159,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 	isNew := idParam == "" || idParam == "new"
 
 	if r.Method == http.MethodPost {
+		stay := r.FormValue("stay") == "1"
 		apply := func(m *Machine) bool {
 			m.Name = strings.TrimSpace(r.FormValue("name"))
 			m.Type = strings.TrimSpace(r.FormValue("type"))
@@ -170,6 +174,24 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			m, errStr := h.store.CreateMachine(apply)
 			if m == nil {
 				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
+			if stay {
+				formData := machineFormData{
+					Machine:                m,
+					IsNew:                  true,
+					FacilityOptions:        FacilityOptions,
+					SubLocationsByFacility: SubLocationsByFacility,
+					MachineStatuses:        MachineStatuses,
+					SuccessMessage:         "Machine created successfully.",
+					CreatedAsset:           m.Asset,
+				}
+				h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
+					Title:    "New machine",
+					Editable: true,
+					Active:   "machines",
+					Data:     formData,
+				})
 				return
 			}
 			http.Redirect(w, r, "/machine?id="+strconv.Itoa(m.Id), http.StatusSeeOther)

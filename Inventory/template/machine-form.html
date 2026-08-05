@@ -6,6 +6,12 @@
   {{if .IsNew}}New machine{{else}}<a href="/machine?id={{$m.Id}}">{{$m.Asset}}</a> // Edit{{end}}
 </div>
 
+{{if .CreatedAsset}}
+<div class="flash small success">
+  <p>{{.CreatedAsset}} created successfully.</p>
+</div>
+{{end}}
+
 <div class="page-head form-inline">
   <h1>{{if .IsNew}}Log a machine{{else}}Edit {{$m.Asset}}{{end}}</h1>
     <div class="head-actions">
@@ -126,9 +132,13 @@
 
   <div class="form-actions">
     <button class="btn" type="submit">{{if .IsNew}}Create machine{{else}}Save changes{{end}}</button>
+    {{if .IsNew}}
+    <button class="btn" type="submit" name="stay" value="1">
+      Create and stay on this page
+    </button>
+    {{end}}
     <a class="btn ghost" href="{{if .IsNew}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
   </div>
 </form>
-
 {{end}}
 {{template "foot" .}}

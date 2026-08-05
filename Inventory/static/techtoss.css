@@ -467,3 +467,33 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .dropdown-option + .dropdown-option {
   border-top: 1px solid var(--line-2);
 }
+
+.flash {
+  display: grid;
+  gap: 4px;
+  background: #edf9f6;
+  border: 1px solid rgba(13,125,115,.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--ink);
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.flash.small {
+  max-width: 640px;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.flash strong {
+  display: block;
+  margin: 0;
+  font-size: 13px;
+}
+.flash p {
+  margin: 0;
+}
+.flash-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+}
