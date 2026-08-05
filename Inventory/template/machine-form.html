@@ -2,12 +2,27 @@
 {{with .Data}}
 {{$m := .Machine}}
 <div class="crumb">
-  <a href="/">Workbench</a> /
-  {{if .IsNew}}New machine{{else}}<a href="/machine?id={{$m.Id}}">{{$m.Asset}}</a> / Edit{{end}}
+  <a href="/">Machines</a> //
+  {{if .IsNew}}New machine{{else}}<a href="/machine?id={{$m.Id}}">{{$m.Asset}}</a> // Edit{{end}}
 </div>
 
-<div class="page-head">
+<div class="page-head form-inline">
   <h1>{{if .IsNew}}Log a machine{{else}}Edit {{$m.Asset}}{{end}}</h1>
+    <div class="head-actions">
+    {{if .IsNew}}
+    {{else}}
+    <form method="post" action="/machine/delete-to-inventory" style="display:inline"
+          onsubmit="return confirm('Delete {{$m.Asset}} but move its {{len $m.Parts}} part(s) to inventory? This cannot be undone.');">
+      <input type="hidden" name="id" value="{{$m.Id}}">
+      <button class="btn danger" type="submit">Delete Machine</button>
+    </form>
+    <form method="post" action="/machine/delete" style="display:inline"
+          onsubmit="return confirm('Delete {{$m.Asset}} and its {{len $m.Parts}} installed part(s)? This cannot be undone.\n\nTo keep any parts, cancel and reassign them to loose inventory first.');">
+      <input type="hidden" name="id" value="{{$m.Id}}">
+      <button class="btn danger" type="submit">Delete Machine & Parts</button>
+    </form>
+    {{end}}
+  </div>
 </div>
 
 <form class="stack" method="post"
@@ -115,15 +130,5 @@
   </div>
 </form>
 
-{{if not .IsNew}}
-<div class="danger-zone">
-  <span class="hint">Deleting removes this machine and any parts still installed in it. This cannot be undone.</span>
-  <form method="post" action="/machine/delete"
-        onsubmit="return confirm('Delete {{$m.Asset}}? This also deletes any parts still installed in it and cannot be undone.');">
-    <input type="hidden" name="id" value="{{$m.Id}}">
-    <button class="btn danger" type="submit">Delete machine</button>
-  </form>
-</div>
-{{end}}
 {{end}}
 {{template "foot" .}}

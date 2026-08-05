@@ -107,6 +107,11 @@ main {
   flex-wrap: wrap;
   margin-bottom: 20px;
 }
+.page-head.form-inline {
+  max-width: 640px;
+  justify-content: space-between;
+  align-items: center;
+}
 .page-head h1 {
   font-size: 22px;
   margin: 0;
@@ -333,7 +338,12 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .field.mono input { font-family: var(--mono); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
-.head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.head-actions {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
 /* Destructive action area at the bottom of the edit form. */
 .danger-zone {
