@@ -6,8 +6,17 @@
   // {{if .IsNew}}Add part{{else}}Edit part{{end}}
 </div>
 
-<div class="page-head">
+<div class="page-head form-inline">
   <h1>{{if .IsNew}}Add a part{{else}}Edit part{{end}}</h1>
+  {{if not .IsNew}}
+  <div class="head-actions">
+    <form method="post" action="/part/delete" style="display:inline"
+          onsubmit="return confirm('Delete this part?')">
+      <input type="hidden" name="id" value="{{$p.Id}}">
+      <button class="btn danger" type="submit">Delete</button>
+    </form>
+  </div>
+  {{end}}
 </div>
 
 <form class="stack" method="post"
