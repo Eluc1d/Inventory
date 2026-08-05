@@ -420,3 +420,50 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   main { padding: 18px 14px 56px; }
   .parts-table .spec { display: none; }
 }
+
+/* dropdown select-style field */
+.hidden { display: none; }
+
+.dropdown-field {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-field input {
+  width: 100%;
+  display: block;
+}
+
+.dropdown-options {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(20,32,42,.08);
+  max-height: 240px;
+  overflow: auto;
+}
+
+.dropdown-option {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 11px 12px;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.dropdown-option:hover,
+.dropdown-option:focus {
+  background: rgba(13,125,115,.08);
+}
+
+.dropdown-option + .dropdown-option {
+  border-top: 1px solid var(--line-2);
+}

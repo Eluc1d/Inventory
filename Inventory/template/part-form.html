@@ -23,14 +23,74 @@
       action="/part/edit?id={{if .IsNew}}new{{else}}{{$p.Id}}{{end}}">
 
   <div class="field">
-    <label for="machine_id">Assigned to</label>
-    <select id="machine_id" name="machine_id">
-      <option value="0" {{if eq $p.MachineId 0}}selected{{end}}>— Loose inventory (not in a machine) —</option>
-      {{range .Machines}}
-      <option value="{{.Id}}" {{if eq .Id $p.MachineId}}selected{{end}}>{{.Asset}} · {{.Name}}</option>
-      {{end}}
-    </select>
+    <label for="machine_search">Assigned to</label>
+    <div class="dropdown-field">
+      <input id="machine_search" name="machine_search" type="text"
+         placeholder="Search machine, or leave blank for loose inventory."
+         autocomplete="off" value="">
+      <input type="hidden" id="machine_id" name="machine_id" value="{{$p.MachineId}}">
+      <div id="machine_options" class="dropdown-options hidden">
+        {{range .Machines}}
+        <button type="button" class="dropdown-option" data-id="{{.Id}}">
+          {{.Asset}} · {{.Name}}
+        </button>
+        {{end}}
+      </div>
+    </div>
   </div>
+
+  <script>
+(function () {
+  const searchInput = document.getElementById('machine_search');
+  const machineIdInput = document.getElementById('machine_id');
+  const optionsPanel = document.getElementById('machine_options');
+  const options = Array.from(optionsPanel.querySelectorAll('.dropdown-option'));
+
+  function openPanel() { optionsPanel.classList.remove('hidden'); }
+  function closePanel() { optionsPanel.classList.add('hidden'); }
+
+  function updateFilter() {
+    const query = searchInput.value.trim().toLowerCase();
+    let anyVisible = false;
+
+    if (query === '') {
+      machineIdInput.value = '0';
+    }
+
+    options.forEach(option => {
+      const text = option.textContent.trim().toLowerCase();
+      const visible = query === '' || text.includes(query);
+      option.style.display = visible ? '' : 'none';
+      if (visible) anyVisible = true;
+    });
+
+    if (anyVisible) openPanel();
+    else closePanel();
+  }
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      searchInput.value = option.textContent.trim();
+      machineIdInput.value = option.dataset.id;
+      closePanel();
+    });
+  });
+
+  searchInput.addEventListener('input', updateFilter);
+  searchInput.addEventListener('focus', updateFilter);
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.dropdown-field')) closePanel();
+  });
+
+  if (machineIdInput.value !== '0') {
+    const selectedOption = options.find(opt => opt.dataset.id === machineIdInput.value);
+    if (selectedOption) searchInput.value = selectedOption.textContent.trim();
+  } else {
+    searchInput.value = '';
+  }
+})();
+  </script>
 
   <div class="form-row">
     <div class="field">
