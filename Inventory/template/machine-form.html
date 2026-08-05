@@ -134,7 +134,7 @@
     <button class="btn" type="submit">{{if .IsNew}}Create machine{{else}}Save changes{{end}}</button>
     {{if .IsNew}}
     <button class="btn" type="submit" name="stay" value="1">
-      Create and stay on this page
+      Create and stay
     </button>
     {{end}}
     <a class="btn ghost" href="{{if .IsNew}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
