@@ -2,8 +2,8 @@
 {{with .Data}}
 {{$p := .Part}}
 <div class="crumb">
-  {{if .Machine}}<a href="/machine?id={{.Machine.Id}}">{{.Machine.Asset}} {{.Machine.Name}}</a>{{else}}<a href="/inventory">Inventory</a>{{end}}
-  / {{if .IsNew}}Add part{{else}}Edit part{{end}}
+  {{if .Machine}}<a href="/machine?id={{.Machine.Id}}">{{.Machine.Asset}} {{.Machine.Name}}</a>{{else}}<a href="/inventory">Parts</a>{{end}}
+  // {{if .IsNew}}Add part{{else}}Edit part{{end}}
 </div>
 
 <div class="page-head">
