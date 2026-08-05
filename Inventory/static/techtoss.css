@@ -163,6 +163,28 @@ main {
 .status-pill .n { font-family: var(--mono); font-weight: 700; color: var(--ink); }
 .status-pill .swatch { width: 9px; height: 9px; border-radius: 2px; }
 
+/* -------------------------------------------------------------- view toggle */
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.view-btn {
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: var(--panel);
+}
+.view-btn + .view-btn { border-left: 1px solid var(--line); }
+.view-btn:hover { text-decoration: none; color: var(--ink); }
+.view-btn.active { background: var(--ink); color: #fff; }
+
+/* --------------------------------------------------------------- machine table */
+
+.machine-table td a { font-weight: 600; }
+
 /* ------------------------------------------------------------- tag cards */
 
 .tag-grid {

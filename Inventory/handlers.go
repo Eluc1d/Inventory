@@ -74,11 +74,13 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 // ------------------------------------------------------------- dashboard
 
 type dashboardData struct {
-	Machines   []*Machine
-	Counts     map[string]int // status -> count
-	Statuses   []string
-	LooseCount int
-	Total      int
+	Machines     []*Machine
+	Counts       map[string]int // status -> count
+	Statuses     []string
+	LooseCount   int
+	Total        int
+	View         string // "bubble" | "rows"
+	StatusFilter string
 }
 
 func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +90,10 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	machines := h.store.AllMachines()
 	filter := r.URL.Query().Get("status")
+	view := r.URL.Query().Get("view")
+	if view != "rows" {
+		view = "bubble"
+	}
 
 	counts := map[string]int{}
 	for _, m := range machines {
@@ -107,11 +113,13 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	sort.SliceStable(shown, func(i, j int) bool { return shown[i].Id > shown[j].Id })
 
 	data := &dashboardData{
-		Machines:   shown,
-		Counts:     counts,
-		Statuses:   MachineStatuses,
-		LooseCount: len(h.store.PartsForMachine(0)),
-		Total:      len(machines),
+		Machines:     shown,
+		Counts:       counts,
+		Statuses:     MachineStatuses,
+		LooseCount:   len(h.store.PartsForMachine(0)),
+		Total:        len(machines),
+		View:         view,
+		StatusFilter: filter,
 	}
 	h.tmpl.Render(w, http.StatusOK, "machine-list.html", &page{
 		Title:    "Workbench",
