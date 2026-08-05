@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -66,6 +67,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/inventory", h.inventory)
 	mux.HandleFunc("/part/edit", h.partEdit)
 	mux.HandleFunc("/part/delete", h.partDelete)
+	mux.HandleFunc("/part/unassign", h.partUnassign)
 }
 
 // ------------------------------------------------------------- dashboard
@@ -138,6 +140,70 @@ func (h *Handlers) machineDetail(w http.ResponseWriter, r *http.Request) {
 
 // ------------------------------------------------------------ machine edit
 
+// stagedPartRow is a part staged in the create-machine form's "Parts" panel:
+// either an existing loose-inventory part to reassign, or a new part to create.
+type stagedPartRow struct {
+	Source     string `json:"source"` // "existing" | "new"
+	ExistingId int    `json:"existing_id"`
+	Category   string `json:"category"`
+	Model      string `json:"model"`
+	Spec       string `json:"spec"`
+	Quantity   int    `json:"quantity"`
+	Condition  string `json:"condition"`
+	Serial     string `json:"serial"`
+	Notes      string `json:"notes"`
+}
+
+// applyStagedParts attaches the parts staged in the create-machine form to the
+// newly created machine: existing loose parts are reassigned, new parts are
+// created outright. Individual row failures are logged and skipped — the
+// machine itself is already created and must not be lost over a bad row.
+func (h *Handlers) applyStagedParts(r *http.Request, machineId int) {
+	raw := r.FormValue("parts_json")
+	if raw == "" {
+		return
+	}
+	var rows []stagedPartRow
+	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		log.Printf("applyStagedParts: bad parts_json: %s", err)
+		return
+	}
+	for _, row := range rows {
+		switch row.Source {
+		case "existing":
+			if row.ExistingId == 0 {
+				continue
+			}
+			if ok, errStr := h.store.EditPart(row.ExistingId, func(p *Part) bool {
+				p.MachineId = machineId
+				return true
+			}); !ok && errStr != "" && errStr != "no change" {
+				log.Printf("applyStagedParts: reassign part %d: %s", row.ExistingId, errStr)
+			}
+		case "new":
+			category := strings.TrimSpace(row.Category)
+			model := strings.TrimSpace(row.Model)
+			spec := strings.TrimSpace(row.Spec)
+			if category == "" && model == "" && spec == "" {
+				continue
+			}
+			if _, errStr := h.store.CreatePart(func(p *Part) bool {
+				p.MachineId = machineId
+				p.Category = category
+				p.Model = model
+				p.Spec = spec
+				p.Quantity = row.Quantity
+				p.Condition = strings.TrimSpace(row.Condition)
+				p.Serial = strings.TrimSpace(row.Serial)
+				p.Notes = strings.TrimSpace(row.Notes)
+				return true
+			}); errStr != "" {
+				log.Printf("applyStagedParts: create part: %s", errStr)
+			}
+		}
+	}
+}
+
 type machineFormData struct {
 	Machine                *Machine
 	IsNew                  bool
@@ -171,6 +237,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, errStr, http.StatusBadRequest)
 				return
 			}
+			h.applyStagedParts(r, m.Id)
 			http.Redirect(w, r, "/machine?id="+strconv.Itoa(m.Id), http.StatusSeeOther)
 			return
 		}
@@ -206,31 +273,93 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 
 // --------------------------------------------------------------- inventory
 
+// facilityRank/subLocationRank order location groups the same way the
+// facility/sub-location <select>s do, with unrecognized or blank values
+// ("Unspecified") sorted last.
+func facilityRank(f string) int {
+	for i, opt := range FacilityOptions {
+		if opt == f {
+			return i
+		}
+	}
+	return len(FacilityOptions)
+}
+
+func subLocationRank(facility, sub string) int {
+	for i, opt := range SubLocationsByFacility[facility] {
+		if opt == sub {
+			return i
+		}
+	}
+	return len(SubLocationsByFacility[facility])
+}
+
 func (h *Handlers) inventory(w http.ResponseWriter, r *http.Request) {
 	loose := h.store.PartsForMachine(0)
-	// Group loose parts by category for a tidy shelf view.
-	byCat := map[string][]*Part{}
-	for _, p := range loose {
-		byCat[p.Category] = append(byCat[p.Category], p)
-	}
-	cats := make([]string, 0, len(byCat))
-	for c := range byCat {
-		cats = append(cats, c)
-	}
-	sort.Strings(cats)
 
-	type catGroup struct {
-		Category string
-		Parts    []*Part
+	type subGroup struct {
+		SubLocation string
+		Parts       []*Part
+		Units       int
+	}
+	type facGroup struct {
+		Facility string
+		Subs     []*subGroup
 		Units    int
 	}
-	groups := make([]*catGroup, 0, len(cats))
-	for _, c := range cats {
-		units := 0
-		for _, p := range byCat[c] {
-			units += p.Quantity
+
+	// Group loose parts by Facility, then Sub-location, for a shelf-by-shelf view.
+	byFacility := map[string]map[string][]*Part{}
+	for _, p := range loose {
+		fac, sub := p.Facility, p.SubLocation
+		if fac == "" {
+			fac = "Unspecified"
 		}
-		groups = append(groups, &catGroup{Category: c, Parts: byCat[c], Units: units})
+		if sub == "" {
+			sub = "Unspecified"
+		}
+		if byFacility[fac] == nil {
+			byFacility[fac] = map[string][]*Part{}
+		}
+		byFacility[fac][sub] = append(byFacility[fac][sub], p)
+	}
+
+	facs := make([]string, 0, len(byFacility))
+	for f := range byFacility {
+		facs = append(facs, f)
+	}
+	sort.SliceStable(facs, func(i, j int) bool {
+		ri, rj := facilityRank(facs[i]), facilityRank(facs[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return facs[i] < facs[j]
+	})
+
+	groups := make([]*facGroup, 0, len(facs))
+	for _, f := range facs {
+		subs := make([]string, 0, len(byFacility[f]))
+		for s := range byFacility[f] {
+			subs = append(subs, s)
+		}
+		sort.SliceStable(subs, func(i, j int) bool {
+			ri, rj := subLocationRank(f, subs[i]), subLocationRank(f, subs[j])
+			if ri != rj {
+				return ri < rj
+			}
+			return subs[i] < subs[j]
+		})
+
+		fg := &facGroup{Facility: f}
+		for _, s := range subs {
+			units := 0
+			for _, p := range byFacility[f][s] {
+				units += p.Quantity
+			}
+			fg.Subs = append(fg.Subs, &subGroup{SubLocation: s, Parts: byFacility[f][s], Units: units})
+			fg.Units += units
+		}
+		groups = append(groups, fg)
 	}
 
 	h.tmpl.Render(w, http.StatusOK, "inventory.html", &page{
@@ -238,7 +367,7 @@ func (h *Handlers) inventory(w http.ResponseWriter, r *http.Request) {
 		Editable: h.canEdit(r),
 		Active:   "inventory",
 		Data: struct {
-			Groups []*catGroup
+			Groups []*facGroup
 			Total  int
 		}{groups, len(loose)},
 	})
@@ -263,6 +392,8 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 			p.Quantity = atoiDefault(r.FormValue("quantity"), 1)
 			p.Condition = strings.TrimSpace(r.FormValue("condition"))
 			p.Serial = strings.TrimSpace(r.FormValue("serial"))
+			p.Facility = strings.TrimSpace(r.FormValue("facility"))
+			p.SubLocation = strings.TrimSpace(r.FormValue("sub_location"))
 			p.Notes = strings.TrimSpace(r.FormValue("notes"))
 			return true
 		}
@@ -300,16 +431,26 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 	if p.MachineId != 0 {
 		machine = h.store.FindMachine(p.MachineId)
 	}
+	// Offer the "pull from inventory" picker only when adding a brand-new part
+	// to a specific machine — pulling a loose part into loose inventory is a
+	// no-op, and it doesn't apply when editing an already-attached part.
+	var looseParts []*Part
+	if isNew && machine != nil {
+		looseParts = h.store.PartsForMachine(0)
+	}
 	h.tmpl.Render(w, http.StatusOK, "part-form.html", &page{
 		Title:    "Edit part",
 		Editable: true,
 		Active:   "inventory",
 		Data: struct {
-			Part     *Part
-			IsNew    bool
-			Machine  *Machine
-			Machines []*Machine
-		}{p, isNew, machine, h.store.AllMachines()},
+			Part                   *Part
+			IsNew                  bool
+			Machine                *Machine
+			Machines               []*Machine
+			LooseParts             []*Part
+			FacilityOptions        []string
+			SubLocationsByFacility map[string][]string
+		}{p, isNew, machine, h.store.AllMachines(), looseParts, FacilityOptions, SubLocationsByFacility},
 	})
 }
 
@@ -325,6 +466,23 @@ func (h *Handlers) partDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	h.store.DeletePart(id)
 	redirectAfterPart(w, r, machineId)
+}
+
+// partUnassign detaches a part from its machine and returns it to loose
+// inventory, rather than deleting it outright. This is what "Remove" on a
+// machine's installed-parts list does — the part still exists, it's just no
+// longer installed anywhere.
+func (h *Handlers) partUnassign(w http.ResponseWriter, r *http.Request) {
+	if !h.canEdit(r) {
+		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+		return
+	}
+	id := atoiDefault(r.FormValue("id"), 0)
+	h.store.EditPart(id, func(p *Part) bool {
+		p.MachineId = 0
+		return true
+	})
+	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 }
 
 func (h *Handlers) machineDelete(w http.ResponseWriter, r *http.Request) {

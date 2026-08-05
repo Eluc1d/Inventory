@@ -66,10 +66,10 @@
         {{if $editable}}
         <td style="white-space:nowrap">
           <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
-          <form method="post" action="/part/delete" style="display:inline"
-                onsubmit="return confirm('Remove this part?')">
+          <form method="post" action="/part/unassign" style="display:inline"
+                onsubmit="return confirm('Return this part to loose inventory? It will no longer be installed in this machine.')">
             <input type="hidden" name="id" value="{{.Id}}">
-            <button class="btn danger small" type="submit">Remove</button>
+            <button class="btn ghost small" type="submit">Return to inventory</button>
           </form>
         </td>
         {{end}}

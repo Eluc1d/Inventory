@@ -10,6 +10,56 @@
   <h1>{{if .IsNew}}Add a part{{else}}Edit part{{end}}</h1>
 </div>
 
+{{if and .IsNew .Machine}}
+<div class="panel">
+  <h2>Pull from inventory</h2>
+  {{if .LooseParts}}
+  <div class="field">
+    <label for="invFilter">Filter</label>
+    <input id="invFilter" placeholder="Search category, model, spec, serial…">
+  </div>
+  <div id="looseList">
+    {{$machine := .Machine}}
+    {{range .LooseParts}}
+    <form method="post" action="/part/edit?id={{.Id}}" class="picker-row loose-part-row"
+          data-hay="{{lower .Category}} {{lower .Model}} {{lower .Spec}} {{lower .Serial}}">
+      <input type="hidden" name="machine_id" value="{{$machine.Id}}">
+      <input type="hidden" name="category" value="{{.Category}}">
+      <input type="hidden" name="model" value="{{.Model}}">
+      <input type="hidden" name="spec" value="{{.Spec}}">
+      <input type="hidden" name="quantity" value="{{.Quantity}}">
+      <input type="hidden" name="condition" value="{{.Condition}}">
+      <input type="hidden" name="serial" value="{{.Serial}}">
+      <input type="hidden" name="facility" value="{{.Facility}}">
+      <input type="hidden" name="sub_location" value="{{.SubLocation}}">
+      <input type="hidden" name="notes" value="{{.Notes}}">
+      <span class="lr-title">{{if .Category}}{{.Category}}{{else}}?{{end}} &middot; {{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</span>
+      <span class="lr-sub">{{.Spec}}</span>
+      <span class="lr-badge">{{.Quantity}}&times; {{.Condition}}</span>
+      <button type="submit" class="btn small">Add to machine</button>
+    </form>
+    {{end}}
+  </div>
+  <script>
+    (function () {
+      var input = document.getElementById('invFilter');
+      var rows = document.querySelectorAll('.loose-part-row');
+      input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase();
+        rows.forEach(function (row) {
+          var hay = row.getAttribute('data-hay') || '';
+          row.style.display = (!q || hay.indexOf(q) !== -1) ? '' : 'none';
+        });
+      });
+    })();
+  </script>
+  {{else}}
+  <p class="sub">No loose parts in inventory right now.</p>
+  {{end}}
+</div>
+<p class="sub" style="margin:14px 2px">&mdash; or enter a brand-new part below &mdash;</p>
+{{end}}
+
 <form class="stack" method="post"
       action="/part/edit?id={{if .IsNew}}new{{else}}{{$p.Id}}{{end}}">
 
@@ -22,6 +72,65 @@
       {{end}}
     </select>
   </div>
+
+  {{if not .Machine}}
+  <div class="form-row">
+    <div class="field">
+      <label for="partFacility">Facility</label>
+      <select id="partFacility" name="facility">
+        <option value="" {{if eq $p.Facility ""}}selected{{end}}>-- Select facility --</option>
+        {{range .FacilityOptions}}
+        <option value="{{.}}" {{if eq . $p.Facility}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div class="field">
+      <label for="partSubLocation">Sub-location</label>
+      <select id="partSubLocation" name="sub_location">
+        <option value="">-- Select --</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var facilitySelect = document.getElementById("partFacility");
+      var sublocationSelect = document.getElementById("partSubLocation");
+
+      var sublocationsByFacility = {
+        "Workshop": ["Rack A", "Rack B", "Shelf 1"],
+        "Bruce's Storage": ["Floor"],
+        "Connor's Garage": ["Floor"],
+        "Almond Orchard": ["Floor"]
+      };
+
+      function updateSublocations() {
+        var facility = facilitySelect.value;
+        var options = sublocationsByFacility[facility] || [];
+
+        sublocationSelect.innerHTML = "";
+
+        var placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "-- Select --";
+        sublocationSelect.appendChild(placeholder);
+
+        options.forEach(function (value) {
+          var opt = document.createElement("option");
+          opt.value = value;
+          opt.textContent = value;
+          if (value === "{{ $p.SubLocation }}") {
+            opt.selected = true;
+          }
+          sublocationSelect.appendChild(opt);
+        });
+      }
+
+      facilitySelect.addEventListener("change", updateSublocations);
+      updateSublocations();
+    })();
+  </script>
+  {{end}}
 
   <div class="form-row">
     <div class="field">
