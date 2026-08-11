@@ -2,13 +2,28 @@
 {{with .Data}}
 {{$p := .Part}}
 <div class="crumb">
-  {{if .Machine}}<a href="/machine?id={{.Machine.Id}}">{{.Machine.Asset}} {{.Machine.Name}}</a>{{else}}<a href="/inventory">Inventory</a>{{end}}
-  / {{if .IsNew}}Add part{{else}}Edit part{{end}}
+  {{if .Machine}}<a href="/machine?id={{.Machine.Id}}">{{.Machine.Asset}} {{.Machine.Name}}</a>{{else}}<a href="/inventory">Parts</a>{{end}}
+  // {{if .IsNew}}Add part{{else}}Edit part{{end}}
 </div>
 
-<div class="page-head">
+<div class="page-head form-inline">
   <h1>{{if .IsNew}}Add a part{{else}}Edit part{{end}}</h1>
+  {{if not .IsNew}}
+  <div class="head-actions">
+    <form method="post" action="/part/delete" style="display:inline"
+          onsubmit="return confirm('Delete this part?')">
+      <input type="hidden" name="id" value="{{$p.Id}}">
+      <button class="btn danger" type="submit">Delete</button>
+    </form>
+  </div>
+  {{end}}
 </div>
+
+{{if .CreatedPartLabel}}
+<div class="flash small success">
+  <p>Part {{.CreatedPartLabel}} added successfully.</p>
+</div>
+{{end}}
 
 {{if and .IsNew .Machine}}
 <div class="panel">
@@ -61,13 +76,20 @@
       action="/part/edit?id={{if .IsNew}}new{{else}}{{$p.Id}}{{end}}">
 
   <div class="field">
-    <label for="machine_id">Assigned to</label>
-    <select id="machine_id" name="machine_id">
-      <option value="0" {{if eq $p.MachineId 0}}selected{{end}}>— Loose inventory (not in a machine) —</option>
-      {{range .Machines}}
-      <option value="{{.Id}}" {{if eq .Id $p.MachineId}}selected{{end}}>{{.Asset}} · {{.Name}}</option>
-      {{end}}
-    </select>
+    <label for="machine_search">Assigned to</label>
+    <div class="dropdown-field">
+      <input id="machine_search" name="machine_search" type="text"
+         placeholder="Search machine, or leave blank for loose inventory."
+         autocomplete="off" value="">
+      <input type="hidden" id="machine_id" name="machine_id" value="{{$p.MachineId}}">
+      <div id="machine_options" class="dropdown-options hidden">
+        {{range .Machines}}
+        <button type="button" class="dropdown-option" data-id="{{.Id}}">
+          {{.Asset}} · {{.Name}}
+        </button>
+        {{end}}
+      </div>
+    </div>
   </div>
 
   {{if not .Machine}}
@@ -130,6 +152,59 @@
   </script>
   {{end}}
 
+  <script>
+(function () {
+  const searchInput = document.getElementById('machine_search');
+  const machineIdInput = document.getElementById('machine_id');
+  const optionsPanel = document.getElementById('machine_options');
+  const options = Array.from(optionsPanel.querySelectorAll('.dropdown-option'));
+
+  function openPanel() { optionsPanel.classList.remove('hidden'); }
+  function closePanel() { optionsPanel.classList.add('hidden'); }
+
+  function updateFilter() {
+    const query = searchInput.value.trim().toLowerCase();
+    let anyVisible = false;
+
+    if (query === '') {
+      machineIdInput.value = '0';
+    }
+
+    options.forEach(option => {
+      const text = option.textContent.trim().toLowerCase();
+      const visible = query === '' || text.includes(query);
+      option.style.display = visible ? '' : 'none';
+      if (visible) anyVisible = true;
+    });
+
+    if (anyVisible) openPanel();
+    else closePanel();
+  }
+
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      searchInput.value = option.textContent.trim();
+      machineIdInput.value = option.dataset.id;
+      closePanel();
+    });
+  });
+
+  searchInput.addEventListener('input', updateFilter);
+  searchInput.addEventListener('focus', updateFilter);
+
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.dropdown-field')) closePanel();
+  });
+
+  if (machineIdInput.value !== '0') {
+    const selectedOption = options.find(opt => opt.dataset.id === machineIdInput.value);
+    if (selectedOption) searchInput.value = selectedOption.textContent.trim();
+  } else {
+    searchInput.value = '';
+  }
+})();
+  </script>
+
   <div class="form-row">
     <div class="field">
       <label for="category">Category</label>
@@ -160,10 +235,6 @@
 
   <div class="form-row">
     <div class="field mono">
-      <label for="quantity">Quantity</label>
-      <input id="quantity" name="quantity" type="number" min="1" value="{{$p.Quantity}}">
-    </div>
-    <div class="field mono">
       <label for="serial">Serial (optional)</label>
       <input id="serial" name="serial" value="{{$p.Serial}}">
     </div>
@@ -176,6 +247,15 @@
 
   <div class="form-actions">
     <button class="btn" type="submit">{{if .IsNew}}Add part{{else}}Save changes{{end}}</button>
+    {{if .IsNew}}
+    <button class="btn" type="submit" name="stay" value="1">
+      Add and stay
+    </button>
+    {{end}}
+    <div class="field action-field">
+      <label for="quantity">Quantity</label>
+      <input id="quantity" name="quantity" type="number" min="1" value="{{$p.Quantity}}">
+    </div>
     <a class="btn ghost" href="{{if .Machine}}/machine?id={{.Machine.Id}}{{else}}/inventory{{end}}">Cancel</a>
   </div>
 </form>

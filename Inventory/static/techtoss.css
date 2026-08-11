@@ -107,6 +107,11 @@ main {
   flex-wrap: wrap;
   margin-bottom: 20px;
 }
+.page-head.form-inline {
+  max-width: 640px;
+  justify-content: space-between;
+  align-items: center;
+}
 .page-head h1 {
   font-size: 22px;
   margin: 0;
@@ -355,7 +360,20 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .field.mono input { font-family: var(--mono); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
-.head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.form-actions .field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.form-actions .field label {
+  margin: 0;
+  white-space: nowrap;
+}
+.form-actions .field input {
+  width: 90px;
+  min-width: 72px;
+}
 
 /* Destructive action area at the bottom of the edit form. */
 .danger-zone {
@@ -484,4 +502,106 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   .form-row { grid-template-columns: 1fr; }
   main { padding: 18px 14px 56px; }
   .parts-table .spec { display: none; }
+}
+
+/* dropdown select-style field */
+.hidden { display: none; }
+
+.dropdown-field {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-field input {
+  width: 100%;
+  display: block;
+}
+
+.dropdown-options {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(20,32,42,.08);
+  max-height: 240px;
+  overflow: auto;
+}
+
+.dropdown-option {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 11px 12px;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.dropdown-option:hover,
+.dropdown-option:focus {
+  background: rgba(13,125,115,.08);
+}
+
+.dropdown-option + .dropdown-option {
+  border-top: 1px solid var(--line-2);
+}
+
+.flash {
+  display: grid;
+  gap: 4px;
+  background: #edf9f6;
+  border: 1px solid rgba(13,125,115,.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--ink);
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.flash.small {
+  max-width: 640px;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.flash strong {
+  display: block;
+  margin: 0;
+  font-size: 13px;
+}
+.flash p {
+  margin: 0;
+}
+.flash-meta {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-actions .action-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.form-actions .action-field label {
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+.form-actions .action-field input {
+  width: 80px;
+  min-width: 64px;
+  padding: 8px 10px;
 }

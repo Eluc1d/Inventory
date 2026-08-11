@@ -64,6 +64,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/machine", h.machineDetail)
 	mux.HandleFunc("/machine/edit", h.machineEdit)
 	mux.HandleFunc("/machine/delete", h.machineDelete)
+	mux.HandleFunc("/machine/delete-to-inventory", h.machineDeleteToInventory)
 	mux.HandleFunc("/inventory", h.inventory)
 	mux.HandleFunc("/part/edit", h.partEdit)
 	mux.HandleFunc("/part/delete", h.partDelete)
@@ -112,6 +113,16 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	// Newest first on the board.
 	sort.SliceStable(shown, func(i, j int) bool { return shown[i].Id > shown[j].Id })
 
+	flash := ""
+	created := atoiDefault(r.URL.Query().Get("created"), 0)
+	if created > 0 {
+		if created == 1 {
+			flash = "1 machine created successfully."
+		} else {
+			flash = strconv.Itoa(created) + " machines created successfully."
+		}
+	}
+
 	data := &dashboardData{
 		Machines:     shown,
 		Counts:       counts,
@@ -125,6 +136,7 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 		Title:    "Workbench",
 		Editable: h.canEdit(r),
 		Active:   "machines",
+		Flash:    flash,
 		Data:     data,
 	})
 }
@@ -271,6 +283,10 @@ type machineFormData struct {
 	FacilityOptions        []string
 	SubLocationsByFacility map[string][]string
 	MachineStatuses        []string
+	SuccessMessage         string
+	CreatedAsset           string
+	CreatedName            string
+	Quantity               int
 }
 
 func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
@@ -282,6 +298,12 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 	isNew := idParam == "" || idParam == "new"
 
 	if r.Method == http.MethodPost {
+		stay := r.FormValue("stay") == "1"
+		quantity := atoiDefault(r.FormValue("quantity"), 1)
+		if quantity < 1 {
+			quantity = 1
+		}
+
 		apply := func(m *Machine) bool {
 			m.Name = strings.TrimSpace(r.FormValue("name"))
 			m.Type = strings.TrimSpace(r.FormValue("type"))
@@ -293,15 +315,49 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			return true
 		}
 		if isNew {
-			m, errStr := h.store.CreateMachine(apply)
-			if m == nil {
-				http.Error(w, errStr, http.StatusBadRequest)
+			machines := make([]*Machine, 0, quantity)
+			for i := 0; i < quantity; i++ {
+				m, errStr := h.store.CreateMachine(apply)
+				if m == nil {
+					log.Printf("machineEdit: bulk create failed after %d created: %s", len(machines), errStr)
+					http.Error(w, errStr, http.StatusBadRequest)
+					return
+				}
+				machines = append(machines, m)
+			}
+
+			if stay {
+				createdLabel := strconv.Itoa(quantity) + " machines"
+				if quantity == 1 {
+					createdLabel = machines[0].Asset
+				}
+				formData := machineFormData{
+					Machine:                machines[0],
+					IsNew:                  true,
+					FacilityOptions:        FacilityOptions,
+					SubLocationsByFacility: SubLocationsByFacility,
+					MachineStatuses:        MachineStatuses,
+					CreatedAsset:           createdLabel,
+					Quantity:               quantity,
+				}
+				h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
+					Title:    "New machine",
+					Editable: true,
+					Active:   "machines",
+					Data:     formData,
+				})
 				return
 			}
-			h.applyStagedParts(r, m.Id)
-			http.Redirect(w, r, "/machine?id="+strconv.Itoa(m.Id), http.StatusSeeOther)
+			h.applyStagedParts(r, machines[0].Id)
+
+			if quantity == 1 {
+				http.Redirect(w, r, "/machine?id="+strconv.Itoa(machines[0].Id), http.StatusSeeOther)
+			} else {
+				http.Redirect(w, r, "/?created="+strconv.Itoa(quantity), http.StatusSeeOther)
+			}
 			return
 		}
+
 		id := atoiDefault(idParam, 0)
 		if _, errStr := h.store.EditMachine(id, apply); errStr != "" && errStr != "no change" {
 			log.Printf("machineEdit: %s", errStr)
@@ -323,6 +379,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 		FacilityOptions:        FacilityOptions,
 		SubLocationsByFacility: SubLocationsByFacility,
 		MachineStatuses:        MachineStatuses,
+		Quantity:               1,
 	}
 	h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
 		Title:    "Edit machine",
@@ -436,6 +493,17 @@ func (h *Handlers) inventory(w http.ResponseWriter, r *http.Request) {
 
 // --------------------------------------------------------------- part edit
 
+type partFormData struct {
+	Part                   *Part
+	IsNew                  bool
+	Machine                *Machine
+	Machines               []*Machine
+	LooseParts             []*Part
+	FacilityOptions        []string
+	SubLocationsByFacility map[string][]string
+	CreatedPartLabel       string
+}
+
 func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 	if !h.canEdit(r) {
 		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
@@ -445,6 +513,7 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 	isNew := idParam == "" || idParam == "new"
 
 	if r.Method == http.MethodPost {
+		stay := r.FormValue("stay") == "1"
 		apply := func(p *Part) bool {
 			p.MachineId = atoiDefault(r.FormValue("machine_id"), 0)
 			p.Category = strings.TrimSpace(r.FormValue("category"))
@@ -458,6 +527,7 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 			p.Notes = strings.TrimSpace(r.FormValue("notes"))
 			return true
 		}
+
 		var machineId int
 		if isNew {
 			p, errStr := h.store.CreatePart(apply)
@@ -466,6 +536,35 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			machineId = p.MachineId
+
+			if stay {
+				var machine *Machine
+				if p.MachineId != 0 {
+					machine = h.store.FindMachine(p.MachineId)
+				}
+
+				createdLabel := strings.TrimSpace(p.Category + " " + p.Model)
+				if createdLabel == "" {
+					createdLabel = p.Serial
+				}
+
+				h.tmpl.Render(w, http.StatusOK, "part-form.html", &page{
+					Title:    "Add part",
+					Editable: true,
+					Active:   "inventory",
+					Data: partFormData{
+						Part:                   p,
+						IsNew:                  true,
+						Machine:                machine,
+						Machines:               h.store.AllMachines(),
+						LooseParts:             nil,
+						FacilityOptions:        FacilityOptions,
+						SubLocationsByFacility: SubLocationsByFacility,
+						CreatedPartLabel:       createdLabel,
+					},
+				})
+				return
+			}
 		} else {
 			id := atoiDefault(idParam, 0)
 			h.store.EditPart(id, apply)
@@ -503,15 +602,15 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 		Title:    "Edit part",
 		Editable: true,
 		Active:   "inventory",
-		Data: struct {
-			Part                   *Part
-			IsNew                  bool
-			Machine                *Machine
-			Machines               []*Machine
-			LooseParts             []*Part
-			FacilityOptions        []string
-			SubLocationsByFacility map[string][]string
-		}{p, isNew, machine, h.store.AllMachines(), looseParts, FacilityOptions, SubLocationsByFacility},
+		Data: partFormData{
+			Part:                   p,
+			IsNew:                  isNew,
+			Machine:                machine,
+			Machines:               h.store.AllMachines(),
+			LooseParts:             looseParts,
+			FacilityOptions:        FacilityOptions,
+			SubLocationsByFacility: SubLocationsByFacility,
+		},
 	})
 }
 
@@ -609,6 +708,36 @@ func (h *Handlers) machineDelete(w http.ResponseWriter, r *http.Request) {
 		log.Printf("machineDelete: failed to delete machine %d", id)
 	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// machineDeleteToInventory moves all parts from the machine to loose inventory
+// and then deletes the machine.
+func (h *Handlers) machineDeleteToInventory(w http.ResponseWriter, r *http.Request) {
+	if !h.canEdit(r) {
+		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	id := atoiDefault(r.FormValue("id"), 0)
+	// Move each installed part to loose inventory (machine_id = 0).
+	parts := h.store.PartsForMachine(id)
+	for _, p := range parts {
+		// best-effort; log failures but continue
+		if _, errStr := h.store.EditPart(p.Id, func(pp *Part) bool {
+			pp.MachineId = 0
+			return true
+		}); errStr != "" {
+			log.Printf("machineDeleteToInventory: failed to move part %d: %s", p.Id, errStr)
+		}
+	}
+	// Now delete the machine (no parts should remain).
+	if ok, _ := h.store.DeleteMachine(id); !ok {
+		log.Printf("machineDeleteToInventory: failed to delete machine %d", id)
+	}
+	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 }
 
 func redirectAfterPart(w http.ResponseWriter, r *http.Request, machineId int) {
