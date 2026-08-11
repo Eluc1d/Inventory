@@ -12,14 +12,17 @@
 {{if .Groups}}
   {{range .Groups}}
   <div class="panel">
-    <div class="inv-cat">{{.Category}} <span class="units">· {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
+    <div class="inv-cat">{{.Facility}} <span class="units">· {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
+    {{range .Subs}}
+    <div class="inv-subloc">{{.SubLocation}} <span class="units">· {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
     <table class="parts-table">
       <thead>
-        <tr><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th>{{if $editable}}<th></th>{{end}}</tr>
+        <tr><th>Category</th><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th>{{if $editable}}<th></th>{{end}}</tr>
       </thead>
       <tbody>
         {{range .Parts}}
         <tr>
+          <td><span class="cat">{{if .Category}}{{.Category}}{{else}}?{{end}}</span></td>
           <td>
             <div class="model">{{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</div>
             {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
@@ -40,6 +43,7 @@
         {{end}}
       </tbody>
     </table>
+    {{end}}
   </div>
   {{end}}
 {{else}}
