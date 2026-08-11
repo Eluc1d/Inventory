@@ -128,10 +128,6 @@
 
   <div class="form-row">
     <div class="field mono">
-      <label for="quantity">Quantity</label>
-      <input id="quantity" name="quantity" type="number" min="1" value="{{$p.Quantity}}">
-    </div>
-    <div class="field mono">
       <label for="serial">Serial (optional)</label>
       <input id="serial" name="serial" value="{{$p.Serial}}">
     </div>
@@ -149,6 +145,10 @@
       Add and stay
     </button>
     {{end}}
+    <div class="field action-field">
+      <label for="quantity">Quantity</label>
+      <input id="quantity" name="quantity" type="number" min="1" value="{{$p.Quantity}}">
+    </div>
     <a class="btn ghost" href="{{if .Machine}}/machine?id={{.Machine.Id}}{{else}}/inventory{{end}}">Cancel</a>
   </div>
 </form>
