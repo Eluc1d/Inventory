@@ -104,6 +104,16 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	// Newest first on the board.
 	sort.SliceStable(shown, func(i, j int) bool { return shown[i].Id > shown[j].Id })
 
+	flash := ""
+	created := atoiDefault(r.URL.Query().Get("created"), 0)
+	if created > 0 {
+		if created == 1 {
+			flash = "1 machine created successfully."
+		} else {
+			flash = strconv.Itoa(created) + " machines created successfully."
+		}
+	}
+
 	data := &dashboardData{
 		Machines:   shown,
 		Counts:     counts,
@@ -115,6 +125,7 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 		Title:    "Workbench",
 		Editable: h.canEdit(r),
 		Active:   "machines",
+		Flash:    flash,
 		Data:     data,
 	})
 }
@@ -148,6 +159,7 @@ type machineFormData struct {
 	SuccessMessage         string
 	CreatedAsset           string
 	CreatedName            string
+	Quantity               int
 }
 
 func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +172,11 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		stay := r.FormValue("stay") == "1"
+		quantity := atoiDefault(r.FormValue("quantity"), 1)
+		if quantity < 1 {
+			quantity = 1
+		}
+
 		apply := func(m *Machine) bool {
 			m.Name = strings.TrimSpace(r.FormValue("name"))
 			m.Type = strings.TrimSpace(r.FormValue("type"))
@@ -171,20 +188,30 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			return true
 		}
 		if isNew {
-			m, errStr := h.store.CreateMachine(apply)
-			if m == nil {
-				http.Error(w, errStr, http.StatusBadRequest)
-				return
+			machines := make([]*Machine, 0, quantity)
+			for i := 0; i < quantity; i++ {
+				m, errStr := h.store.CreateMachine(apply)
+				if m == nil {
+					log.Printf("machineEdit: bulk create failed after %d created: %s", len(machines), errStr)
+					http.Error(w, errStr, http.StatusBadRequest)
+					return
+				}
+				machines = append(machines, m)
 			}
+
 			if stay {
+				createdLabel := strconv.Itoa(quantity) + " machines"
+				if quantity == 1 {
+					createdLabel = machines[0].Asset
+				}
 				formData := machineFormData{
-					Machine:                m,
+					Machine:                machines[0],
 					IsNew:                  true,
 					FacilityOptions:        FacilityOptions,
 					SubLocationsByFacility: SubLocationsByFacility,
 					MachineStatuses:        MachineStatuses,
-					SuccessMessage:         "Machine created successfully.",
-					CreatedAsset:           m.Asset,
+					CreatedAsset:           createdLabel,
+					Quantity:               quantity,
 				}
 				h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
 					Title:    "New machine",
@@ -194,9 +221,15 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			http.Redirect(w, r, "/machine?id="+strconv.Itoa(m.Id), http.StatusSeeOther)
+
+			if quantity == 1 {
+				http.Redirect(w, r, "/machine?id="+strconv.Itoa(machines[0].Id), http.StatusSeeOther)
+			} else {
+				http.Redirect(w, r, "/?created="+strconv.Itoa(quantity), http.StatusSeeOther)
+			}
 			return
 		}
+
 		id := atoiDefault(idParam, 0)
 		if _, errStr := h.store.EditMachine(id, apply); errStr != "" && errStr != "no change" {
 			log.Printf("machineEdit: %s", errStr)
@@ -218,6 +251,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 		FacilityOptions:        FacilityOptions,
 		SubLocationsByFacility: SubLocationsByFacility,
 		MachineStatuses:        MachineStatuses,
+		Quantity:               1,
 	}
 	h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
 		Title:    "Edit machine",

@@ -136,6 +136,10 @@
     <button class="btn" type="submit" name="stay" value="1">
       Create and stay
     </button>
+    <div class="field action-field">
+      <label for="quantity">Quantity</label>
+      <input id="quantity" name="quantity" type="number" min="1" value="{{if .Quantity}}{{.Quantity}}{{else}}1{{end}}" placeholder="1">
+    </div>
     {{end}}
     <a class="btn ghost" href="{{if .IsNew}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
   </div>
