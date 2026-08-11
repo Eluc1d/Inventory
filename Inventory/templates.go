@@ -18,6 +18,7 @@ var templateFuncs = template.FuncMap{
 	"machineStatuses": func() []string { return MachineStatuses },
 	"partCategories":  func() []string { return PartCategories },
 	"partConditions":  func() []string { return PartConditions },
+	"facilityOptions": func() []string { return FacilityOptions },
 }
 
 type Templates struct {

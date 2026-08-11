@@ -25,31 +25,37 @@ type Machine struct {
 // either installed in a Machine (MachineId != 0) or sits in loose inventory
 // (MachineId == 0).
 type Part struct {
-	Id        int       `json:"id"`
-	MachineId int       `json:"machine_id,omitempty"` // 0 == loose inventory
-	Category  string    `json:"category"`             // RAM, GPU, CPU, Storage, ...
-	Model     string    `json:"model"`                // "Corsair Vengeance 16GB DDR4-3200"
-	Spec      string    `json:"spec,omitempty"`       // free-form specs / description
-	Quantity  int       `json:"quantity"`
-	Condition string    `json:"condition,omitempty"` // Working, Untested, Faulty
-	Serial    string    `json:"serial,omitempty"`
-	Notes     string    `json:"notes,omitempty"`
-	Created   time.Time `json:"created,omitempty"`
-	Updated   time.Time `json:"updated,omitempty"`
+	Id        int    `json:"id"`
+	MachineId int    `json:"machine_id,omitempty"` // 0 == loose inventory
+	Category  string `json:"category"`             // RAM, GPU, CPU, Storage, ...
+	Model     string `json:"model"`                // "Corsair Vengeance 16GB DDR4-3200"
+	Spec      string `json:"spec,omitempty"`       // free-form specs / description
+	Quantity  int    `json:"quantity"`
+	Condition string `json:"condition,omitempty"` // Working, Untested, Faulty
+	Serial    string `json:"serial,omitempty"`
+	// Facility/SubLocation only apply while a part sits in loose inventory —
+	// once installed in a machine, the part's location is the machine's.
+	Facility    string    `json:"facility,omitempty"`
+	SubLocation string    `json:"sub_location,omitempty"`
+	Notes       string    `json:"notes,omitempty"`
+	Created     time.Time `json:"created,omitempty"`
+	Updated     time.Time `json:"updated,omitempty"`
 }
 
 var FacilityOptions = []string{
-	"Workshop",
+	"Techtoss",
 	"Bruce's Storage",
 	"Connor's Garage",
 	"Almond Orchard",
+	"Other",
 }
 
 var SubLocationsByFacility = map[string][]string{
-	"Workshop":        {"Rack A", "Rack B", "Shelf 1"},
+	"Techtoss":        {"Rack A", "Rack B", "Shelf 1"},
 	"Bruce's Storage": {"Floor"},
 	"Connor's Garage": {"Floor"},
 	"Almond Orchard":  {"Floor"},
+	"Other":           {"N/A"},
 }
 
 // The canonical workflow a machine moves through. Order matters: it is used to

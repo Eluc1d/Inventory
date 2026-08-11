@@ -66,10 +66,20 @@
         {{if $editable}}
         <td style="white-space:nowrap">
           <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
-          <form method="post" action="/part/delete" style="display:inline"
-                onsubmit="return confirm('Remove this part?')">
+          <button type="button" class="btn ghost small" data-return-toggle="return-{{.Id}}">Return to inventory</button>
+          <form method="post" action="/part/unassign" class="return-form" id="return-{{.Id}}"
+                style="display:none; gap:6px; align-items:center; margin-top:6px"
+                onsubmit="return confirm('Return this part to loose inventory? It will no longer be installed in this machine.')">
             <input type="hidden" name="id" value="{{.Id}}">
-            <button class="btn danger small" type="submit">Remove</button>
+            <select name="facility" class="return-select" required>
+              <option value="">-- Facility --</option>
+              {{range facilityOptions}}<option value="{{.}}">{{.}}</option>{{end}}
+            </select>
+            <select name="sub_location" class="return-select" required>
+              <option value="">-- Sub-location --</option>
+            </select>
+            <button class="btn small" type="submit">Confirm</button>
+            <button class="btn ghost small" type="button" data-return-cancel="return-{{.Id}}">Cancel</button>
           </form>
         </td>
         {{end}}
@@ -81,5 +91,55 @@
   <p class="sub" style="margin-top:12px">No parts recorded for this machine yet.</p>
   {{end}}
 </div>
+
+{{if $editable}}
+<script>
+  (function () {
+    var sublocationsByFacility = {
+      "Techtoss": ["Rack A", "Rack B", "Shelf 1"],
+      "Bruce's Storage": ["Floor"],
+      "Connor's Garage": ["Floor"],
+      "Almond Orchard": ["Floor"],
+      "Other": ["N/A"]
+    };
+
+    function updateSublocations(form) {
+      var facilitySelect = form.querySelector('.return-select[name="facility"]');
+      var sublocationSelect = form.querySelector('.return-select[name="sub_location"]');
+      var options = sublocationsByFacility[facilitySelect.value] || [];
+      sublocationSelect.innerHTML = '<option value="">-- Sub-location --</option>';
+      options.forEach(function (value) {
+        var opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = value;
+        sublocationSelect.appendChild(opt);
+      });
+    }
+
+    document.querySelectorAll('.return-form').forEach(function (form) {
+      form.querySelector('.return-select[name="facility"]').addEventListener('change', function () {
+        updateSublocations(form);
+      });
+    });
+
+    document.querySelectorAll('[data-return-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var form = document.getElementById(btn.getAttribute('data-return-toggle'));
+        btn.style.display = 'none';
+        form.style.display = 'inline-flex';
+      });
+    });
+
+    document.querySelectorAll('[data-return-cancel]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var form = document.getElementById(btn.getAttribute('data-return-cancel'));
+        form.style.display = 'none';
+        var toggleBtn = document.querySelector('[data-return-toggle="' + form.id + '"]');
+        if (toggleBtn) toggleBtn.style.display = '';
+      });
+    });
+  })();
+</script>
+{{end}}
 {{end}}
 {{template "foot" .}}

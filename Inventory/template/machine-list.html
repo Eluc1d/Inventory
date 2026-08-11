@@ -1,18 +1,27 @@
 {{template "head" .}}
 {{$editable := .Editable}}
 {{with .Data}}
+{{$view := .View}}
+{{$status := .StatusFilter}}
+
 <div class="page-head">
   <div>
     <h1>Workbench</h1>
     <div class="sub">{{.Total}} machine{{if ne .Total 1}}s{{end}} tracked · {{.LooseCount}} loose part{{if ne .LooseCount 1}}s{{end}} in inventory</div>
   </div>
-  {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
+  <div style="display:flex; align-items:center; gap:10px">
+    <div class="view-toggle">
+      <a class="view-btn {{if ne $view "rows"}}active{{end}}" href="/?view=bubble{{if $status}}&status={{$status}}{{end}}">Bubbles</a>
+      <a class="view-btn {{if eq $view "rows"}}active{{end}}" href="/?view=rows{{if $status}}&status={{$status}}{{end}}">Rows</a>
+    </div>
+    {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
+  </div>
 </div>
 
 <div class="status-strip">
-  <a class="status-pill" href="/">All <span class="n">{{.Total}}</span></a>
+  <a class="status-pill" href="/?view={{$view}}">All <span class="n">{{.Total}}</span></a>
   {{range .Statuses}}
-    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}">
+    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}&view={{$view}}">
       <span class="swatch" style="background:var(--st-accent)"></span>
       {{.}} <span class="n">{{index $.Data.Counts .}}</span>
     </a>
@@ -20,23 +29,53 @@
 </div>
 
 {{if .Machines}}
-<div class="tag-grid">
-  {{range .Machines}}
-  <a class="tag s-{{statusSlug .Status}}" href="/machine?id={{.Id}}">
-    <div class="asset">{{.Asset}}</div>
-    <div class="name">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</div>
-    <div class="meta">
-      {{if .Type}}<span class="type">{{.Type}}</span>{{end}}
-      <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
-      {{if or .Facility .SubLocation}}
-    <span>
-      {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
-    </span>
-{{end}}
-    </div>
-  </a>
+  {{if eq $view "rows"}}
+  <div class="panel">
+    <table class="parts-table machine-table">
+      <thead>
+        <tr>
+          <th>Asset</th><th>Name</th><th>Type</th><th>Status</th><th>Condition</th><th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Machines}}
+        <tr>
+          <td class="mono">{{.Asset}}</td>
+          <td><a href="/machine?id={{.Id}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</a></td>
+          <td>{{if .Type}}{{.Type}}{{else}}&mdash;{{end}}</td>
+          <td><span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span></td>
+          <td>{{if .Condition}}{{.Condition}}{{else}}&mdash;{{end}}</td>
+          <td>
+            {{if or .Facility .SubLocation}}
+              {{.Facility}}{{if and .Facility .SubLocation}}, {{end}}{{.SubLocation}}
+            {{else}}
+              &mdash;
+            {{end}}
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="tag-grid">
+    {{range .Machines}}
+    <a class="tag s-{{statusSlug .Status}}" href="/machine?id={{.Id}}">
+      <div class="asset">{{.Asset}}</div>
+      <div class="name">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</div>
+      <div class="meta">
+        {{if .Type}}<span class="type">{{.Type}}</span>{{end}}
+        <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
+        {{if or .Facility .SubLocation}}
+      <span>
+        {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
+      </span>
   {{end}}
-</div>
+      </div>
+    </a>
+    {{end}}
+  </div>
+  {{end}}
 {{else}}
 <div class="empty">
   <h3>Nothing on the bench yet</h3>

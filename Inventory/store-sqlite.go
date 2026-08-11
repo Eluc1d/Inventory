@@ -68,6 +68,12 @@ func NewSqlStore(db *sql.DB) (*SqlStore, error) {
 	if err := ensureMachineColumns(db); err != nil {
 		return nil, err
 	}
+	if err := ensurePartColumns(db); err != nil {
+		return nil, err
+	}
+	if err := renameFacility(db, "Workshop", "Techtoss"); err != nil {
+		return nil, err
+	}
 
 	// SQLite ignores FK constraints unless asked.
 	db.Exec("PRAGMA foreign_keys = ON")
@@ -95,6 +101,33 @@ func ensureMachineColumns(db *sql.DB) error {
 	}
 
 	_, err = db.Exec(`ALTER TABLE machine ADD COLUMN sub_location varchar(60)`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
+	return nil
+}
+
+// renameFacility is a one-time, idempotent fixup for facility taxonomy
+// renames: any machine/part still tagged with the old name is moved to the
+// new one, so the rename doesn't orphan existing rows outside FacilityOptions.
+func renameFacility(db *sql.DB, from, to string) error {
+	if _, err := db.Exec("UPDATE machine SET facility=? WHERE facility=?", to, from); err != nil {
+		return err
+	}
+	if _, err := db.Exec("UPDATE part SET facility=? WHERE facility=?", to, from); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ensurePartColumns(db *sql.DB) error {
+	_, err := db.Exec(`ALTER TABLE part ADD COLUMN facility varchar(60)`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
+	_, err = db.Exec(`ALTER TABLE part ADD COLUMN sub_location varchar(60)`)
 	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return err
 	}
@@ -222,23 +255,25 @@ func (d *SqlStore) EditMachine(id int, updater ModifyMachine) (bool, string) {
 
 func scanPart(rows *sql.Rows) (*Part, error) {
 	var (
-		id                                         int
-		machineId, quantity                        *int
-		category, model, spec, cond, serial, notes *string
-		created, updated                           *time.Time
+		id                                                       int
+		machineId, quantity                                      *int
+		category, model, spec, cond, serial, fac, sub_loc, notes *string
+		created, updated                                         *time.Time
 	)
-	err := rows.Scan(&id, &machineId, &category, &model, &spec, &quantity, &cond, &serial, &notes, &created, &updated)
+	err := rows.Scan(&id, &machineId, &category, &model, &spec, &quantity, &cond, &serial, &fac, &sub_loc, &notes, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
 	p := &Part{
-		Id:        id,
-		Category:  fromNull(category),
-		Model:     fromNull(model),
-		Spec:      fromNull(spec),
-		Condition: fromNull(cond),
-		Serial:    fromNull(serial),
-		Notes:     fromNull(notes),
+		Id:          id,
+		Category:    fromNull(category),
+		Model:       fromNull(model),
+		Spec:        fromNull(spec),
+		Condition:   fromNull(cond),
+		Serial:      fromNull(serial),
+		Facility:    fromNull(fac),
+		SubLocation: fromNull(sub_loc),
+		Notes:       fromNull(notes),
 	}
 	if machineId != nil {
 		p.MachineId = *machineId
@@ -255,7 +290,7 @@ func scanPart(rows *sql.Rows) (*Part, error) {
 	return p, nil
 }
 
-const partCols = "id, machine_id, category, model, spec, quantity, condition, serial, notes, created, updated"
+const partCols = "id, machine_id, category, model, spec, quantity, condition, serial, facility, sub_location, notes, created, updated"
 
 func (d *SqlStore) FindPart(id int) *Part {
 	rows, err := d.db.Query("SELECT "+partCols+" FROM part WHERE id=?", id)
@@ -325,8 +360,8 @@ func (d *SqlStore) CreatePart(updater ModifyPart) (*Part, string) {
 	}
 	now := time.Now()
 	res, err := d.db.Exec(
-		"INSERT INTO part (machine_id, category, model, spec, quantity, condition, serial, notes, created, updated) VALUES (?,?,?,?,?,?,?,?,?,?)",
-		machineIdOrNull(p.MachineId), str(p.Category), str(p.Model), str(p.Spec), p.Quantity, str(p.Condition), str(p.Serial), str(p.Notes), now, now)
+		"INSERT INTO part (machine_id, category, model, spec, quantity, condition, serial, facility, sub_location, notes, created, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+		machineIdOrNull(p.MachineId), str(p.Category), str(p.Model), str(p.Spec), p.Quantity, str(p.Condition), str(p.Serial), str(p.Facility), str(p.SubLocation), str(p.Notes), now, now)
 	if err != nil {
 		return nil, err.Error()
 	}
@@ -354,8 +389,8 @@ func (d *SqlStore) EditPart(id int, updater ModifyPart) (bool, string) {
 	}
 	now := time.Now()
 	_, err := d.db.Exec(
-		"UPDATE part SET machine_id=?, category=?, model=?, spec=?, quantity=?, condition=?, serial=?, notes=?, updated=? WHERE id=?",
-		machineIdOrNull(p.MachineId), str(p.Category), str(p.Model), str(p.Spec), p.Quantity, str(p.Condition), str(p.Serial), str(p.Notes), now, id)
+		"UPDATE part SET machine_id=?, category=?, model=?, spec=?, quantity=?, condition=?, serial=?, facility=?, sub_location=?, notes=?, updated=? WHERE id=?",
+		machineIdOrNull(p.MachineId), str(p.Category), str(p.Model), str(p.Spec), p.Quantity, str(p.Condition), str(p.Serial), str(p.Facility), str(p.SubLocation), str(p.Notes), now, id)
 	if err != nil {
 		return false, err.Error()
 	}

@@ -163,6 +163,28 @@ main {
 .status-pill .n { font-family: var(--mono); font-weight: 700; color: var(--ink); }
 .status-pill .swatch { width: 9px; height: 9px; border-radius: 2px; }
 
+/* -------------------------------------------------------------- view toggle */
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.view-btn {
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  background: var(--panel);
+}
+.view-btn + .view-btn { border-left: 1px solid var(--line); }
+.view-btn:hover { text-decoration: none; color: var(--ink); }
+.view-btn.active { background: var(--ink); color: #fff; }
+
+/* --------------------------------------------------------------- machine table */
+
+.machine-table td a { font-weight: 600; }
+
 /* ------------------------------------------------------------- tag cards */
 
 .tag-grid {
@@ -382,6 +404,51 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .live-row .lr-badge { margin-left: auto; font-size: 12px; color: var(--ink-soft); font-family: var(--mono); }
 .live-empty { color: var(--ink-soft); font-size: 14px; padding: 10px 2px; }
 
+/* ------------------------------------------------------------- utilities */
+
+.hidden { display: none; }
+
+/* ------------------------------------------------------- staged-parts UI */
+
+.picker-box {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255,255,255,.5);
+}
+.picker-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.picker-row:hover { border-color: var(--accent); }
+.picker-row .lr-title { font-weight: 600; }
+.picker-row .lr-sub { color: var(--ink-soft); font-size: 13px; margin-left: 2px; }
+.picker-row .lr-badge { margin-left: auto; font-size: 12px; color: var(--ink-soft); font-family: var(--mono); }
+.picker-qty {
+  width: 56px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--panel);
+}
+
+.return-select {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--panel);
+}
+
 /* ------------------------------------------------------------ empty state */
 
 .empty {
@@ -400,6 +467,14 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .inv-cat { font-family: var(--mono); font-size: 13px; letter-spacing: .04em; color: var(--ink);
   display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
 .inv-cat .units { color: var(--ink-soft); font-weight: 400; }
+
+.inv-subloc {
+  font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft);
+  display: flex; align-items: center; gap: 8px;
+  margin: 18px 0 8px; padding-top: 12px; border-top: 1px solid var(--line-2);
+}
+.inv-cat + .inv-subloc { margin-top: 0; padding-top: 0; border-top: none; }
+.inv-subloc .units { color: var(--ink-soft); font-weight: 400; text-transform: none; }
 
 /* --------------------------------------------------------------- mobile */
 
