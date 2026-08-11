@@ -348,7 +348,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 				})
 				return
 			}
-			h.applyStagedParts(r, m.Id)
+			h.applyStagedParts(r, machines[0].Id)
 
 			if quantity == 1 {
 				http.Redirect(w, r, "/machine?id="+strconv.Itoa(machines[0].Id), http.StatusSeeOther)
@@ -494,11 +494,14 @@ func (h *Handlers) inventory(w http.ResponseWriter, r *http.Request) {
 // --------------------------------------------------------------- part edit
 
 type partFormData struct {
-	Part             *Part
-	IsNew            bool
-	Machine          *Machine
-	Machines         []*Machine
-	CreatedPartLabel string
+	Part                   *Part
+	IsNew                  bool
+	Machine                *Machine
+	Machines               []*Machine
+	LooseParts             []*Part
+	FacilityOptions        []string
+	SubLocationsByFacility map[string][]string
+	CreatedPartLabel       string
 }
 
 func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
@@ -550,11 +553,14 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 					Editable: true,
 					Active:   "inventory",
 					Data: partFormData{
-						Part:             p,
-						IsNew:            true,
-						Machine:          machine,
-						Machines:         h.store.AllMachines(),
-						CreatedPartLabel: createdLabel,
+						Part:                   p,
+						IsNew:                  true,
+						Machine:                machine,
+						Machines:               h.store.AllMachines(),
+						LooseParts:             nil,
+						FacilityOptions:        FacilityOptions,
+						SubLocationsByFacility: SubLocationsByFacility,
+						CreatedPartLabel:       createdLabel,
 					},
 				})
 				return
@@ -596,21 +602,14 @@ func (h *Handlers) partEdit(w http.ResponseWriter, r *http.Request) {
 		Title:    "Edit part",
 		Editable: true,
 		Active:   "inventory",
-		Data: struct {
-			Part                   *Part
-			IsNew                  bool
-			Machine                *Machine
-			Machines               []*Machine
-			LooseParts             []*Part
-			FacilityOptions        []string
-			SubLocationsByFacility map[string][]string
-		}{p, isNew, machine, h.store.AllMachines(), looseParts, FacilityOptions, SubLocationsByFacility},
-		
 		Data: partFormData{
-			Part:     p,
-			IsNew:    isNew,
-			Machine:  machine,
-			Machines: h.store.AllMachines(),
+			Part:                   p,
+			IsNew:                  isNew,
+			Machine:                machine,
+			Machines:               h.store.AllMachines(),
+			LooseParts:             looseParts,
+			FacilityOptions:        FacilityOptions,
+			SubLocationsByFacility: SubLocationsByFacility,
 		},
 	})
 }
