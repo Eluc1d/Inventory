@@ -52,9 +52,17 @@ func (h *Handlers) searchLive(w http.ResponseWriter, r *http.Request) {
 			}
 			if hit.Kind == "machine" {
 				m := hit.Machine
+				subtitle := m.Asset
+				if subtitle != "" && m.Type != "" {
+					subtitle += " · " + m.Type
+				} else if subtitle == "" {
+					subtitle = m.Type
+				}
 				out.Rows = append(out.Rows, &liveRow{
 					Kind: "machine", Id: m.Id,
-					Title: m.Name, Subtitle: m.Type, Badge: m.Status,
+					Title: m.Name,
+					Subtitle: subtitle,
+					Badge: m.Status,
 					Href: "/machine?id=" + itoa(m.Id),
 				})
 			} else {
