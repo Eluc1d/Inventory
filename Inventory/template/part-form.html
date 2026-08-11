@@ -74,7 +74,7 @@
   <div class="form-row">
     <div class="field">
       <label for="partFacility">Facility</label>
-      <select id="partFacility" name="facility">
+      <select id="partFacility" name="facility" required>
         <option value="" {{if eq $p.Facility ""}}selected{{end}}>-- Select facility --</option>
         {{range .FacilityOptions}}
         <option value="{{.}}" {{if eq . $p.Facility}}selected{{end}}>{{.}}</option>
@@ -83,7 +83,7 @@
     </div>
     <div class="field">
       <label for="partSubLocation">Sub-location</label>
-      <select id="partSubLocation" name="sub_location">
+      <select id="partSubLocation" name="sub_location" required>
         <option value="">-- Select --</option>
       </select>
     </div>
@@ -95,10 +95,11 @@
       var sublocationSelect = document.getElementById("partSubLocation");
 
       var sublocationsByFacility = {
-        "Workshop": ["Rack A", "Rack B", "Shelf 1"],
+        "Techtoss": ["Rack A", "Rack B", "Shelf 1"],
         "Bruce's Storage": ["Floor"],
         "Connor's Garage": ["Floor"],
-        "Almond Orchard": ["Floor"]
+        "Almond Orchard": ["Floor"],
+        "Other": ["N/A"]
       };
 
       function updateSublocations() {

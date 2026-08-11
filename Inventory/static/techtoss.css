@@ -440,6 +440,15 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   background: var(--panel);
 }
 
+.return-select {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--panel);
+}
+
 /* ------------------------------------------------------------ empty state */
 
 .empty {

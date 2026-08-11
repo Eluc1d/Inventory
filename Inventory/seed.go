@@ -20,7 +20,7 @@ func seedIfEmpty(store Store) {
 	}{
 		{
 			name: "Dell OptiPlex 7060", typ: "Desktop", status: "Testing",
-			condition: "Good", facility: "Workshop", sub_location: "Rack A",
+			condition: "Good", facility: "Techtoss", sub_location: "Rack A",
 			notes: "Donated batch #4. Boots, needs memtest.",
 			parts: []partSpec{
 				{"CPU", "Intel Core i5-8500", "6c/6t, 3.0GHz", "Working", 1},
@@ -31,7 +31,7 @@ func seedIfEmpty(store Store) {
 		},
 		{
 			name: "Custom Gaming Tower", typ: "Desktop", status: "Repair",
-			condition: "Fair", facility: "Workshop", sub_location: "Rack B",
+			condition: "Fair", facility: "Techtoss", sub_location: "Rack B",
 			notes: "No POST. Suspect GPU or PSU.",
 			parts: []partSpec{
 				{"GPU", "NVIDIA RTX 2060", "6GB GDDR6", "Faulty", 1},

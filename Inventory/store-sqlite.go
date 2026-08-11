@@ -71,6 +71,9 @@ func NewSqlStore(db *sql.DB) (*SqlStore, error) {
 	if err := ensurePartColumns(db); err != nil {
 		return nil, err
 	}
+	if err := renameFacility(db, "Workshop", "Techtoss"); err != nil {
+		return nil, err
+	}
 
 	// SQLite ignores FK constraints unless asked.
 	db.Exec("PRAGMA foreign_keys = ON")
@@ -102,6 +105,19 @@ func ensureMachineColumns(db *sql.DB) error {
 		return err
 	}
 
+	return nil
+}
+
+// renameFacility is a one-time, idempotent fixup for facility taxonomy
+// renames: any machine/part still tagged with the old name is moved to the
+// new one, so the rename doesn't orphan existing rows outside FacilityOptions.
+func renameFacility(db *sql.DB, from, to string) error {
+	if _, err := db.Exec("UPDATE machine SET facility=? WHERE facility=?", to, from); err != nil {
+		return err
+	}
+	if _, err := db.Exec("UPDATE part SET facility=? WHERE facility=?", to, from); err != nil {
+		return err
+	}
 	return nil
 }
 

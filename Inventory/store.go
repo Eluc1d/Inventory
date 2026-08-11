@@ -43,17 +43,19 @@ type Part struct {
 }
 
 var FacilityOptions = []string{
-	"Workshop",
+	"Techtoss",
 	"Bruce's Storage",
 	"Connor's Garage",
 	"Almond Orchard",
+	"Other",
 }
 
 var SubLocationsByFacility = map[string][]string{
-	"Workshop":        {"Rack A", "Rack B", "Shelf 1"},
+	"Techtoss":        {"Rack A", "Rack B", "Shelf 1"},
 	"Bruce's Storage": {"Floor"},
 	"Connor's Garage": {"Floor"},
 	"Almond Orchard":  {"Floor"},
+	"Other":           {"N/A"},
 }
 
 // The canonical workflow a machine moves through. Order matters: it is used to

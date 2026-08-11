@@ -539,11 +539,60 @@ func (h *Handlers) partUnassign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := atoiDefault(r.FormValue("id"), 0)
-	h.store.EditPart(id, func(p *Part) bool {
-		p.MachineId = 0
-		return true
-	})
+	facility := strings.TrimSpace(r.FormValue("facility"))
+	subLocation := strings.TrimSpace(r.FormValue("sub_location"))
+	src := h.store.FindPart(id)
+	if src == nil {
+		http.Redirect(w, r, "/inventory", http.StatusSeeOther)
+		return
+	}
+	machineId := src.MachineId
+
+	// If an identical line already sits in loose inventory, fold this part's
+	// quantity into it instead of leaving a duplicate row behind — e.g.
+	// returning 1 desk shouldn't create a second "1x desk" next to an
+	// existing "13x desks" line. The existing line's own location wins; the
+	// facility/sub_location picked on the way back only matters when this
+	// part ends up staying on its own (no match to merge into).
+	if target := h.findMatchingLoosePart(src); target != nil {
+		h.store.EditPart(target.Id, func(p *Part) bool {
+			p.Quantity += src.Quantity
+			return true
+		})
+		h.store.DeletePart(id)
+	} else {
+		h.store.EditPart(id, func(p *Part) bool {
+			p.MachineId = 0
+			p.Facility = facility
+			p.SubLocation = subLocation
+			return true
+		})
+	}
+
+	// Stay on the machine the part was just removed from, rather than jumping
+	// to the inventory page — the machine view already reflects the change.
+	if machineId != 0 {
+		http.Redirect(w, r, "/machine?id="+strconv.Itoa(machineId), http.StatusSeeOther)
+		return
+	}
 	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
+}
+
+// findMatchingLoosePart looks for a loose-inventory part that's identical to
+// src in everything but quantity, machine assignment, and location — the
+// signal that it's the "same" line, so a returned part should merge into it
+// rather than sit as a separate duplicate entry.
+func (h *Handlers) findMatchingLoosePart(src *Part) *Part {
+	for _, p := range h.store.PartsForMachine(0) {
+		if p.Id == src.Id {
+			continue
+		}
+		if p.Category == src.Category && p.Model == src.Model && p.Spec == src.Spec &&
+			p.Condition == src.Condition && p.Serial == src.Serial {
+			return p
+		}
+	}
+	return nil
 }
 
 func (h *Handlers) machineDelete(w http.ResponseWriter, r *http.Request) {
