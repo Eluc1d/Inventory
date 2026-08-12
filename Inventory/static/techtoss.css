@@ -1,36 +1,44 @@
 /* TechToss — bench inventory.
-   Identity: laser-etched asset tags on a cool workshop surface.
+   Identity: a bright retro sunset — deep purple night sky sweeping through
+   hot magenta-pink into vivid orange at the horizon, over dark navy-purple
+   silhouettes. The header carries that full gradient; the primary accent
+   (buttons, links, active states) is the vivid orange from the horizon, with
+   magenta held in reserve as a secondary highlight.
    Signature: machine cards shaped like physical inventory tags (punched hole,
    mono asset ID). Data (IDs, specs, quantities) is always monospace. */
 
 :root {
-  --ink:      #14202a;
-  --ink-soft: #3d4c57;
-  --surface:  #eaeeed;
+  --ink:      #241c3d;
+  --ink-soft: #6a5f89;
+  --surface:  #faf5ee;
   --panel:    #ffffff;
-  --line:     #d3dad9;
-  --line-2:   #e4e9e8;
-  --accent:   #0d7d73;
-  --accent-d: #0a5f58;
-  --amber:    #b26f0f;
+  --line:     #efe2d8;
+  --line-2:   #f6ece2;
+  --accent:     #ff7a1f;
+  --accent-rgb: 255,122,31;
+  --accent-d:   #e0530f;
+  --pink:       #ec1c6f;
+  --pink-rgb:   236,28,111;
+  --purple:     #3b1f5e;
+  --amber:    #ffab3d;
 
   --st-intake:      #5b7089;
-  --st-testing:     #c67a12;
-  --st-repair:      #cf5a2a;
-  --st-refurbished: #0d7d73;
-  --st-for-parts:   #6d5aa8;
+  --st-testing:     #d68a1f;
+  --st-repair:      #c0452a;
+  --st-refurbished: #2f9e88;
+  --st-for-parts:   #ec1c6f;
   --st-sold:        #3f9142;
-  --st-tossed:      #9a5b5b;
+  --st-tossed:      #8a5a42;
 
   --cond-working:  #3f9142;
-  --cond-untested: #8a94a0;
+  --cond-untested: #8a809a;
   --cond-faulty:   #c0473a;
 
   --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   --radius: 10px;
-  --shadow: 0 1px 2px rgba(20,32,42,.06), 0 6px 18px rgba(20,32,42,.06);
+  --shadow: 0 1px 2px rgba(36,28,61,.06), 0 6px 18px rgba(36,28,61,.06);
 }
 
 * { box-sizing: border-box; }
@@ -52,45 +60,40 @@ a:hover { text-decoration: underline; }
 /* ---------------------------------------------------------------- header */
 
 .topbar {
-  background: var(--ink);
-  color: #eef3f2;
-  border-bottom: 3px solid var(--accent);
+  background: linear-gradient(100deg,
+    var(--purple) 0%, var(--pink) 45%, var(--accent) 85%, var(--amber) 100%);
+  color: #fff;
+  border-bottom: 3px solid var(--accent-d);
 }
 .topbar-inner {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 12px 20px;
+  padding: 8px 20px;
   display: flex;
   align-items: center;
   gap: 22px;
   flex-wrap: wrap;
 }
 .brand {
-  font-family: var(--mono);
-  font-weight: 700;
-  letter-spacing: .14em;
-  font-size: 17px;
-  color: #fff;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
 }
 .brand:hover { text-decoration: none; }
-.brand .dot {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(13,125,115,.28);
+.brand img {
+  display: block;
+  height: 52px;
+  width: auto;
 }
 .nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
 .nav a {
-  color: #b9c6c4;
+  color: rgba(255,255,255,.78);
   font-size: 13.5px;
   padding: 6px 12px;
   border-radius: 7px;
   letter-spacing: .02em;
 }
-.nav a:hover { color: #fff; background: rgba(255,255,255,.06); text-decoration: none; }
-.nav a.active { color: #fff; background: rgba(13,125,115,.30); }
+.nav a:hover { color: #fff; background: rgba(255,255,255,.14); text-decoration: none; }
+.nav a.active { color: #fff; background: rgba(36,28,61,.35); }
 
 /* --------------------------------------------------------------- layout */
 
@@ -354,7 +357,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(13,125,115,.15);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15);
 }
 .field textarea { min-height: 84px; resize: vertical; }
 .field.mono input { font-family: var(--mono); }
@@ -400,7 +403,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   border-radius: 10px;
   background: var(--panel);
 }
-.searchbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(13,125,115,.15); }
+.searchbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15); }
 .live-results { margin-top: 6px; display: grid; gap: 8px; }
 .live-row {
   display: flex; align-items: center; gap: 12px;
@@ -498,6 +501,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 
 @media (max-width: 640px) {
   .topbar-inner { gap: 10px; }
+  .brand img { height: 40px; }
   .nav { margin-left: 0; width: 100%; }
   .form-row { grid-template-columns: 1fr; }
   main { padding: 18px 14px 56px; }
@@ -526,7 +530,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(20,32,42,.08);
+  box-shadow: 0 12px 30px rgba(36,17,71,.08);
   max-height: 240px;
   overflow: auto;
 }
@@ -544,7 +548,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 
 .dropdown-option:hover,
 .dropdown-option:focus {
-  background: rgba(13,125,115,.08);
+  background: rgba(var(--accent-rgb),.08);
 }
 
 .dropdown-option + .dropdown-option {
@@ -555,7 +559,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   display: grid;
   gap: 4px;
   background: #edf9f6;
-  border: 1px solid rgba(13,125,115,.22);
+  border: 1px solid rgba(var(--accent-rgb),.22);
   border-radius: 10px;
   padding: 10px 12px;
   color: var(--ink);
