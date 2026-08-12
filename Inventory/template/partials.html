@@ -15,6 +15,11 @@
       <a href="/inventory" class="{{if eq .Active "inventory"}}active{{end}}">Parts</a>
       <a href="/search"    class="{{if eq .Active "search"}}active{{end}}">Search</a>
     </nav>
+    <div class="topbar-search">
+      <input id="topbarSearch" type="search" autocomplete="off"
+             placeholder="Type to search..." aria-label="Topbar search">
+      <div id="topbarSearchOptions" class="dropdown-options hidden"></div>
+    </div>
   </div>
 </header>
 <main>
@@ -34,9 +39,10 @@
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
   function render(data) {
-    if (!data.query) { box.innerHTML = ''; return; }
+    if (!data.query) { box.innerHTML = ''; box.classList.add('hidden'); return; }
     if (!data.rows.length) {
       box.innerHTML = '<div class="live-empty">No machines or parts match &ldquo;' + esc(data.query) + '&rdquo;.</div>';
+      box.classList.remove('hidden');
       return;
     }
     box.innerHTML = data.rows.map(function (r) {
@@ -62,6 +68,61 @@
     timer = setTimeout(run, 120);
   });
   if (input.value.trim()) run();
+})();
+
+(function () {
+  var input = document.getElementById('topbarSearch');
+  if (!input) return;
+  var box = document.getElementById('topbarSearchOptions');
+  var timer = null;
+
+  function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function render(data) {
+    if (!data.query) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+    if (!data.rows.length) {
+      box.innerHTML = '<div class="live-empty">No results for &ldquo;' + esc(data.query) + '&rdquo;.</div>';
+      box.classList.remove('hidden');
+      return;
+    }
+    box.innerHTML = data.rows.map(function (r) {
+      return '<button type="button" class="dropdown-option" data-href="' + r.href + '">' +
+        '<span class="kind ' + r.kind + '">' + esc(r.kind) + '</span>' +
+        '<span class="lr-title">' + esc(r.title || '(untitled)') + '</span>' +
+        '<span class="lr-sub">' + esc(r.subtitle) + '</span>' +
+        (r.badge ? '<span class="lr-badge">' + esc(r.badge) + '</span>' : '') +
+      '</button>';
+    }).join('');
+    box.classList.remove('hidden');
+  }
+
+  function run() {
+    var q = input.value.trim();
+    if (!q) { render({query:'', rows:[]}); return; }
+    fetch('/api/live?q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function () {});
+  }
+
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(run, 120);
+  });
+  input.addEventListener('focus', run);
+
+  box.addEventListener('click', function (event) {
+    var button = event.target.closest('.dropdown-option');
+    if (!button) return;
+    window.location = button.dataset.href;
+  });
+
+  document.addEventListener('click', function (event) {
+    if (!event.target.closest('.topbar-search')) {
+      box.classList.add('hidden');
+    }
+  });
 })();
 </script>
 </body>

@@ -28,7 +28,9 @@
       <a class="live-row" href="/machine?id={{.Machine.Id}}">
         <span class="kind machine">machine</span>
         <span class="lr-title">{{.Machine.Name}}</span>
-        <span class="lr-sub">{{.Machine.Type}}</span>
+        <span class="lr-sub">
+          {{.Machine.Asset}}{{if and .Machine.Asset .Machine.Type}} · {{end}}{{.Machine.Type}}
+        </span>
         <span class="lr-badge">{{.Machine.Status}}</span>
       </a>
       {{else}}

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func (h *Handlers) RegisterSearch(mux *http.ServeMux) {
@@ -52,10 +53,30 @@ func (h *Handlers) searchLive(w http.ResponseWriter, r *http.Request) {
 			}
 			if hit.Kind == "machine" {
 				m := hit.Machine
+
+				title := m.Asset
+				if title == "" {
+					title = m.Name
+				}
+				if title == "" {
+					title = m.Type
+				}
+
+				subtitleParts := []string{}
+				if m.Name != "" {
+					subtitleParts = append(subtitleParts, m.Name)
+				}
+				if m.Type != "" {
+					subtitleParts = append(subtitleParts, m.Type)
+				}
+
 				out.Rows = append(out.Rows, &liveRow{
-					Kind: "machine", Id: m.Id,
-					Title: m.Name, Subtitle: m.Type, Badge: m.Status,
-					Href: "/machine?id=" + itoa(m.Id),
+					Kind:     "machine",
+					Id:       m.Id,
+					Title:    title,
+					Subtitle: strings.Join(subtitleParts, " · "),
+					Badge:    m.Status,
+					Href:     "/machine?id=" + itoa(m.Id),
 				})
 			} else {
 				p := hit.Part
