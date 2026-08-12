@@ -67,6 +67,7 @@ func (h *Handlers) Register(mux *http.ServeMux) {
     mux.HandleFunc("/machine/edit", h.machineEdit)
     mux.HandleFunc("/machine/delete", h.machineDelete)
     mux.HandleFunc("/machine/delete-to-inventory", h.machineDeleteToInventory)
+    mux.HandleFunc("/machine/group-move-parts", h.machineGroupMoveParts)
     mux.HandleFunc("/inventory", h.inventory)
     mux.HandleFunc("/part/edit", h.partEdit)
     mux.HandleFunc("/part/delete", h.partDelete)
@@ -950,4 +951,39 @@ func sharedMachineValues(machines []*Machine) groupEditShared {
     }
 
     return shared
+}
+
+func (h *Handlers) machineGroupMoveParts(w http.ResponseWriter, r *http.Request) {
+    if !h.canEdit(r) {
+        http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+        return
+    }
+    if r.Method != http.MethodPost {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+    if err := r.ParseForm(); err != nil {
+        http.Error(w, "Invalid form submission.", http.StatusBadRequest)
+        return
+    }
+
+    selectedIds := parseIntList(r.Form["selected_ids"])
+    if len(selectedIds) == 0 {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
+
+    for _, id := range selectedIds {
+        parts := h.store.PartsForMachine(id)
+        for _, p := range parts {
+            if _, errStr := h.store.EditPart(p.Id, func(pp *Part) bool {
+                pp.MachineId = 0
+                return true
+            }); errStr != "" {
+                log.Printf("machineGroupMoveParts: failed to move part %d from machine %d: %s", p.Id, id, errStr)
+            }
+        }
+    }
+
+    http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 }

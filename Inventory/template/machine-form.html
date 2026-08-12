@@ -23,7 +23,15 @@
   <h1>{{if $data.IsNew}}Log a machine{{else if $data.IsGroupEdit}}Group edit machines{{else}}Edit {{$m.Asset}}{{end}}</h1>
   <div class="head-actions">
     {{if $data.IsGroupEdit}}
-      <div class="hint">{{len $data.Machines}} selected machines. Leave fields blank to keep existing values.</div>
+      <div style="display:flex; gap:8px; align-items:center">
+        <div class="hint">{{len $data.Machines}} selected machines. Leave fields blank to keep existing values.</div>
+        <form method="post" action="/machine/group-move-parts" style="display:inline" onsubmit="return confirm('Move all parts attached to the selected machines into loose inventory? This cannot be undone.');">
+          {{range $data.SelectedIds}}
+            <input type="hidden" name="selected_ids" value="{{.}}">
+          {{end}}
+          <button class="btn ghost" type="submit">Move parts to inventory</button>
+        </form>
+      </div>
     {{else if $data.IsNew}}
     {{else}}
       <form method="post" action="/machine/delete-to-inventory" style="display:inline"
