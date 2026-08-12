@@ -189,6 +189,8 @@ main {
 /* --------------------------------------------------------------- machine table */
 
 .machine-table td a { font-weight: 600; }
+.machine-table tr.selectable-row { cursor: pointer; }
+.machine-table tr.selected { background: rgba(13, 125, 115, 0.08); }
 
 /* ------------------------------------------------------------- tag cards */
 
@@ -604,4 +606,31 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   width: 80px;
   min-width: 64px;
   padding: 8px 10px;
+}
+
+/* --------------------------------------------------------------- selectable machines */
+
+.selectable-machine { position: relative; }
+.selectable-machine:hover { outline: 1px solid rgba(13, 125, 115, 0.2); }
+.selectable-machine.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(13, 125, 115, 0.18), var(--shadow);
+  background: rgba(13, 125, 115, 0.06);
+}
+
+.selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.selection-toolbar.hidden { display: none; }
+.selection-toolbar .selected-summary {
+  color: var(--ink-soft);
+  font-size: 13px;
 }

@@ -28,6 +28,13 @@
   {{end}}
 </div>
 
+<div class="selection-toolbar hidden" id="selectionToolbar">
+  <div class="selected-summary">
+    <span id="selectionCount">0</span> selected of <span id="selectionTotal">{{len .Machines}}</span> in view
+  </div>
+  <button class="btn" type="button" id="groupEditButton">Group edit</button>
+</div>
+
 {{if .Machines}}
   {{if eq $view "rows"}}
   <div class="panel">
@@ -39,7 +46,7 @@
       </thead>
       <tbody>
         {{range .Machines}}
-        <tr>
+        <tr class="selectable-machine selectable-row" data-machine-id="{{.Id}}">
           <td class="mono">{{.Asset}}</td>
           <td><a href="/machine?id={{.Id}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</a></td>
           <td>{{if .Type}}{{.Type}}{{else}}&mdash;{{end}}</td>
@@ -60,7 +67,7 @@
   {{else}}
   <div class="tag-grid">
     {{range .Machines}}
-    <a class="tag s-{{statusSlug .Status}}" href="/machine?id={{.Id}}">
+    <a class="tag s-{{statusSlug .Status}} selectable-machine" data-machine-id="{{.Id}}" href="/machine?id={{.Id}}">
       <div class="asset">{{.Asset}}</div>
       <div class="name">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</div>
       <div class="meta">
@@ -84,4 +91,108 @@
 </div>
 {{end}}
 {{end}}
+
+<script>
+(function () {
+  var items = Array.from(document.querySelectorAll('.selectable-machine'));
+  if (!items.length) {
+    return;
+  }
+
+  var selection = new Set();
+  var lastIndex = -1;
+  var toolbar = document.getElementById('selectionToolbar');
+  var selectionCount = document.getElementById('selectionCount');
+  var selectionTotal = document.getElementById('selectionTotal');
+  var groupButton = document.getElementById('groupEditButton');
+  var total = items.length;
+
+  function updateToolbar() {
+    var count = selection.size;
+    if (count > 0) {
+      toolbar.classList.remove('hidden');
+      selectionCount.textContent = count;
+      selectionTotal.textContent = total;
+      groupButton.disabled = false;
+    } else {
+      toolbar.classList.add('hidden');
+      groupButton.disabled = true;
+    }
+
+    items.forEach(function (item, index) {
+      var active = selection.has(index);
+      item.classList.toggle('selected', active);
+      item.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+
+  function clearSelection() {
+    selection.clear();
+  }
+
+  function selectIndex(index) {
+    selection.add(index);
+    lastIndex = index;
+  }
+
+  function toggleIndex(index) {
+    if (selection.has(index)) {
+      selection.delete(index);
+    } else {
+      selection.add(index);
+    }
+    lastIndex = index;
+  }
+
+  function selectRange(index) {
+    if (lastIndex < 0) {
+      selectIndex(index);
+      return;
+    }
+    var start = Math.min(lastIndex, index);
+    var end = Math.max(lastIndex, index);
+    for (var i = start; i <= end; i++) {
+      selection.add(i);
+    }
+  }
+
+  function handleClick(e) {
+    var item = e.currentTarget;
+    var index = Number(item.dataset.index);
+    var isLinkClick = e.target.closest('a') !== null && item.contains(e.target.closest('a'));
+
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey && isLinkClick) {
+      return;
+    }
+
+    e.preventDefault();
+
+    if (e.shiftKey) {
+      if (!e.ctrlKey) {
+        clearSelection();
+      }
+      selectRange(index);
+    } else if (e.ctrlKey || e.metaKey) {
+      toggleIndex(index);
+    } else {
+      clearSelection();
+      selectIndex(index);
+    }
+
+    updateToolbar();
+  }
+
+  items.forEach(function (item, index) {
+    item.dataset.index = index;
+    item.addEventListener('click', handleClick);
+  });
+
+  groupButton.addEventListener('click', function () {
+    // Group edit is not implemented yet.
+  });
+
+  updateToolbar();
+})();
+</script>
+
 {{template "foot" .}}
