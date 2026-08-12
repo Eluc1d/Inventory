@@ -60,16 +60,18 @@ type page struct {
 }
 
 func (h *Handlers) Register(mux *http.ServeMux) {
-	mux.HandleFunc("/", h.dashboard)
-	mux.HandleFunc("/machine", h.machineDetail)
-	mux.HandleFunc("/machine/edit", h.machineEdit)
-	mux.HandleFunc("/machine/delete", h.machineDelete)
-	mux.HandleFunc("/machine/delete-to-inventory", h.machineDeleteToInventory)
-	mux.HandleFunc("/inventory", h.inventory)
-	mux.HandleFunc("/part/edit", h.partEdit)
-	mux.HandleFunc("/part/delete", h.partDelete)
-	mux.HandleFunc("/part/unassign", h.partUnassign)
-	mux.HandleFunc("/part/pull", h.partPull)
+    mux.HandleFunc("/", h.dashboard)
+    mux.HandleFunc("/machine/group-edit", h.machineGroupEdit)
+    mux.HandleFunc("/machine/group-edit/", h.machineGroupEdit)
+    mux.HandleFunc("/machine", h.machineDetail)
+    mux.HandleFunc("/machine/edit", h.machineEdit)
+    mux.HandleFunc("/machine/delete", h.machineDelete)
+    mux.HandleFunc("/machine/delete-to-inventory", h.machineDeleteToInventory)
+    mux.HandleFunc("/inventory", h.inventory)
+    mux.HandleFunc("/part/edit", h.partEdit)
+    mux.HandleFunc("/part/delete", h.partDelete)
+    mux.HandleFunc("/part/unassign", h.partUnassign)
+    mux.HandleFunc("/part/pull", h.partPull)
 }
 
 // ------------------------------------------------------------- dashboard
@@ -144,19 +146,130 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------- machine detail
 
 func (h *Handlers) machineDetail(w http.ResponseWriter, r *http.Request) {
-	id := atoiDefault(r.URL.Query().Get("id"), 0)
-	m := h.store.FindMachine(id)
-	if m == nil {
-		http.NotFound(w, r)
-		return
-	}
-	m.Parts = h.store.PartsForMachine(m.Id)
-	h.tmpl.Render(w, http.StatusOK, "machine-detail.html", &page{
-		Title:    m.Asset + " " + m.Name,
-		Editable: h.canEdit(r),
-		Active:   "machines",
-		Data:     m,
-	})
+    id := atoiDefault(r.URL.Query().Get("id"), 0)
+    m := h.store.FindMachine(id)
+    if m == nil {
+        http.NotFound(w, r)
+        return
+    }
+    m.Parts = h.store.PartsForMachine(m.Id)
+    h.tmpl.Render(w, http.StatusOK, "machine-detail.html", &page{
+        Title:    m.Asset + " " + m.Name,
+        Editable: h.canEdit(r),
+        Active:   "machines",
+        Data:     m,
+    })
+}
+
+// ------------------------------------------------------------ machine edit
+
+func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
+    if !h.canEdit(r) {
+        http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+        return
+    }
+
+    idParam := r.URL.Query().Get("id")
+    isNew := idParam == "" || idParam == "new"
+
+    if r.Method == http.MethodPost {
+        if err := r.ParseForm(); err != nil {
+            http.Error(w, "Invalid form submission.", http.StatusBadRequest)
+            return
+        }
+
+        asset := strings.TrimSpace(r.FormValue("asset"))
+        name := strings.TrimSpace(r.FormValue("name"))
+        typ := strings.TrimSpace(r.FormValue("type"))
+        status := strings.TrimSpace(r.FormValue("status"))
+        condition := strings.TrimSpace(r.FormValue("condition"))
+        facility := strings.TrimSpace(r.FormValue("facility"))
+        subLocation := strings.TrimSpace(r.FormValue("sub_location"))
+        notes := strings.TrimSpace(r.FormValue("notes"))
+        stay := r.FormValue("stay") == "1"
+
+        if isNew {
+            m, errStr := h.store.CreateMachine(func(m *Machine) bool {
+                m.Asset = asset
+                m.Name = name
+                m.Type = typ
+                m.Status = status
+                m.Condition = condition
+                m.Facility = facility
+                m.SubLocation = subLocation
+                m.Notes = notes
+                return true
+            })
+            if m == nil {
+                http.Error(w, errStr, http.StatusBadRequest)
+                return
+            }
+
+            h.applyStagedParts(r, m.Id)
+            if stay {
+                h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
+                    Title:    "Log a machine",
+                    Editable: true,
+                    Active:   "machines",
+                    Data: machineFormData{
+                        Machine:                m,
+                        IsNew:                  true,
+                        FacilityOptions:        FacilityOptions,
+                        SubLocationsByFacility: SubLocationsByFacility,
+                        MachineStatuses:        MachineStatuses,
+                    },
+                })
+                return
+            }
+
+            http.Redirect(w, r, "/?created=1", http.StatusSeeOther)
+            return
+        }
+
+        id := atoiDefault(idParam, 0)
+        if ok, errStr := h.store.EditMachine(id, func(m *Machine) bool {
+            m.Asset = asset
+            m.Name = name
+            m.Type = typ
+            m.Status = status
+            m.Condition = condition
+            m.Facility = facility
+            m.SubLocation = subLocation
+            m.Notes = notes
+            return true
+        }); !ok {
+            http.Error(w, errStr, http.StatusBadRequest)
+            return
+        }
+
+        h.applyStagedParts(r, id)
+        http.Redirect(w, r, "/machine?id="+strconv.Itoa(id), http.StatusSeeOther)
+        return
+    }
+
+    m := &Machine{}
+    if !isNew {
+        id := atoiDefault(idParam, 0)
+        if found := h.store.FindMachine(id); found == nil {
+            http.NotFound(w, r)
+            return
+        } else {
+            m = found
+        }
+    }
+
+    h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
+        Title:    "Edit machine",
+        Editable: true,
+        Active:   "machines",
+        Data: machineFormData{
+            Machine:                m,
+            IsNew:                  isNew,
+            FacilityOptions:        FacilityOptions,
+            SubLocationsByFacility: SubLocationsByFacility,
+            MachineStatuses:        MachineStatuses,
+        },
+    })
 }
 
 // ------------------------------------------------------------ machine edit
@@ -277,115 +390,97 @@ func (h *Handlers) partPull(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 }
 
-type machineFormData struct {
-	Machine                *Machine
-	IsNew                  bool
-	FacilityOptions        []string
-	SubLocationsByFacility map[string][]string
-	MachineStatuses        []string
-	SuccessMessage         string
-	CreatedAsset           string
-	CreatedName            string
-	Quantity               int
-}
+// ------------------------------------------------------------ machine group edit
 
-func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) machineGroupEdit(w http.ResponseWriter, r *http.Request) {
 	if !h.canEdit(r) {
 		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
 		return
 	}
-	idParam := r.URL.Query().Get("id")
-	isNew := idParam == "" || idParam == "new"
 
 	if r.Method == http.MethodPost {
-		stay := r.FormValue("stay") == "1"
-		quantity := atoiDefault(r.FormValue("quantity"), 1)
-		if quantity < 1 {
-			quantity = 1
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form submission.", http.StatusBadRequest)
+			return
 		}
-
-		apply := func(m *Machine) bool {
-			m.Name = strings.TrimSpace(r.FormValue("name"))
-			m.Type = strings.TrimSpace(r.FormValue("type"))
-			m.Status = strings.TrimSpace(r.FormValue("status"))
-			m.Condition = strings.TrimSpace(r.FormValue("condition"))
-			m.Facility = strings.TrimSpace(r.FormValue("facility"))
-			m.SubLocation = strings.TrimSpace(r.FormValue("sub_location"))
-			m.Notes = strings.TrimSpace(r.FormValue("notes"))
-			return true
-		}
-		if isNew {
-			machines := make([]*Machine, 0, quantity)
-			for i := 0; i < quantity; i++ {
-				m, errStr := h.store.CreateMachine(apply)
-				if m == nil {
-					log.Printf("machineEdit: bulk create failed after %d created: %s", len(machines), errStr)
-					http.Error(w, errStr, http.StatusBadRequest)
-					return
-				}
-				machines = append(machines, m)
-			}
-
-			if stay {
-				createdLabel := strconv.Itoa(quantity) + " machines"
-				if quantity == 1 {
-					createdLabel = machines[0].Asset
-				}
-				formData := machineFormData{
-					Machine:                machines[0],
-					IsNew:                  true,
-					FacilityOptions:        FacilityOptions,
-					SubLocationsByFacility: SubLocationsByFacility,
-					MachineStatuses:        MachineStatuses,
-					CreatedAsset:           createdLabel,
-					Quantity:               quantity,
-				}
-				h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
-					Title:    "New machine",
-					Editable: true,
-					Active:   "machines",
-					Data:     formData,
-				})
-				return
-			}
-			h.applyStagedParts(r, machines[0].Id)
-
-			if quantity == 1 {
-				http.Redirect(w, r, "/machine?id="+strconv.Itoa(machines[0].Id), http.StatusSeeOther)
-			} else {
-				http.Redirect(w, r, "/?created="+strconv.Itoa(quantity), http.StatusSeeOther)
-			}
+		selectedIds := parseIntList(r.Form["selected_ids"])
+		if len(selectedIds) == 0 {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
-		id := atoiDefault(idParam, 0)
-		if _, errStr := h.store.EditMachine(id, apply); errStr != "" && errStr != "no change" {
-			log.Printf("machineEdit: %s", errStr)
+		name := strings.TrimSpace(r.FormValue("name"))
+		typ := strings.TrimSpace(r.FormValue("type"))
+		status := strings.TrimSpace(r.FormValue("status"))
+		condition := strings.TrimSpace(r.FormValue("condition"))
+		facility := strings.TrimSpace(r.FormValue("facility"))
+		subLocation := strings.TrimSpace(r.FormValue("sub_location"))
+		notes := strings.TrimSpace(r.FormValue("notes"))
+
+		for _, id := range selectedIds {
+			if _, errStr := h.store.EditMachine(id, func(m *Machine) bool {
+				if name != "" {
+					m.Name = name
+				}
+				if typ != "" {
+					m.Type = typ
+				}
+				if status != "" {
+					m.Status = status
+				}
+				if condition != "" {
+					m.Condition = condition
+				}
+				if facility != "" {
+					m.Facility = facility
+				}
+				if subLocation != "" {
+					m.SubLocation = subLocation
+				}
+				if notes != "" {
+					m.Notes = notes
+				}
+				return true
+			}); errStr != "" {
+				log.Printf("machineGroupEdit: failed to update machine %d: %s", id, errStr)
+			}
 		}
-		http.Redirect(w, r, "/machine?id="+strconv.Itoa(id), http.StatusSeeOther)
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	// GET: render the form (blank for new).
-	m := &Machine{Status: MachineStatuses[0]}
-	if !isNew {
-		if found := h.store.FindMachine(atoiDefault(idParam, 0)); found != nil {
-			m = found
+	selectedIds := parseIntList(r.URL.Query()["ids"])
+	if len(selectedIds) == 0 {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	machines := make([]*Machine, 0, len(selectedIds))
+	for _, id := range selectedIds {
+		if m := h.store.FindMachine(id); m != nil {
+			machines = append(machines, m)
 		}
 	}
-	formData := machineFormData{
-		Machine:                m,
-		IsNew:                  isNew,
-		FacilityOptions:        FacilityOptions,
-		SubLocationsByFacility: SubLocationsByFacility,
-		MachineStatuses:        MachineStatuses,
-		Quantity:               1,
+	if len(machines) == 0 {
+		http.NotFound(w, r)
+		return
 	}
+
 	h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
-		Title:    "Edit machine",
+		Title:    "Group edit machines",
 		Editable: true,
 		Active:   "machines",
-		Data:     formData,
+		Data: machineFormData{
+			Machine:                machines[0],
+			IsGroupEdit:            true,
+			SelectedIds:            selectedIds,
+			Shared:                 sharedMachineValues(machines),
+			Machines:               machines,
+			FacilityOptions:        FacilityOptions,
+			SubLocationsByFacility: SubLocationsByFacility,
+			MachineStatuses:        MachineStatuses,
+		},
 	})
 }
 
@@ -746,4 +841,113 @@ func redirectAfterPart(w http.ResponseWriter, r *http.Request, machineId int) {
 	} else {
 		http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 	}
+}
+
+type groupEditShared struct {
+    Asset            string
+    AssetVaried      bool
+    Name             string
+    NameVaried       bool
+    Type             string
+    TypeVaried       bool
+    Status           string
+    StatusVaried     bool
+    Condition        string
+    ConditionVaried  bool
+    Facility         string
+    FacilityVaried   bool
+    SubLocation      string
+    SubLocationVaried bool
+    Notes            string
+    NotesVaried      bool
+}
+
+type machineFormData struct {
+    Machine                *Machine
+    IsNew                  bool
+    IsGroupEdit            bool
+    SelectedIds            []int
+    Shared                 groupEditShared
+    Machines               []*Machine
+    FacilityOptions        []string
+    SubLocationsByFacility map[string][]string
+    MachineStatuses        []string
+    SuccessMessage         string
+    CreatedAsset           string
+    CreatedName            string
+    Quantity               int
+}
+
+func parseIntList(values []string) []int {
+    out := make([]int, 0, len(values))
+    seen := make(map[int]bool)
+    for _, raw := range values {
+        raw = strings.TrimSpace(raw)
+        if raw == "" {
+            continue
+        }
+        id, err := strconv.Atoi(raw)
+        if err != nil {
+            continue
+        }
+        if !seen[id] {
+            seen[id] = true
+            out = append(out, id)
+        }
+    }
+    return out
+}
+
+func sharedMachineValues(machines []*Machine) groupEditShared {
+    shared := groupEditShared{}
+    if len(machines) == 0 {
+        return shared
+    }
+
+    first := machines[0]
+    shared.Asset = first.Asset
+    shared.Name = first.Name
+    shared.Type = first.Type
+    shared.Status = first.Status
+    shared.Condition = first.Condition
+    shared.Facility = first.Facility
+    shared.SubLocation = first.SubLocation
+    shared.Notes = first.Notes
+
+    for _, m := range machines[1:] {
+        if m.Asset != shared.Asset {
+            shared.AssetVaried = true
+            shared.Asset = ""
+        }
+        if m.Name != shared.Name {
+            shared.NameVaried = true
+            shared.Name = ""
+        }
+        if m.Type != shared.Type {
+            shared.TypeVaried = true
+            shared.Type = ""
+        }
+        if m.Status != shared.Status {
+            shared.StatusVaried = true
+            shared.Status = ""
+        }
+        if m.Condition != shared.Condition {
+            shared.ConditionVaried = true
+            shared.Condition = ""
+        }
+        if m.Facility != shared.Facility {
+            shared.FacilityVaried = true
+            shared.Facility = ""
+        }
+        if m.SubLocation != shared.SubLocation {
+            shared.SubLocationVaried = true
+            shared.SubLocation = ""
+        }
+        if m.Notes != shared.Notes {
+            shared.NotesVaried = true
+            shared.Notes = ""
+        }
+    }
+
+    return shared
 }

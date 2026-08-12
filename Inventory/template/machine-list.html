@@ -32,7 +32,7 @@
   <div class="selected-summary">
     <span id="selectionCount">0</span> selected of <span id="selectionTotal">{{len .Machines}}</span> in view
   </div>
-  <button class="btn" type="button" id="groupEditButton">Group edit</button>
+  <button class="btn" type="button" id="groupEditButton" disabled>Group edit</button>
 </div>
 
 {{if .Machines}}
@@ -41,7 +41,12 @@
     <table class="parts-table machine-table">
       <thead>
         <tr>
-          <th>Asset</th><th>Name</th><th>Type</th><th>Status</th><th>Condition</th><th>Location</th>
+          <th>Asset</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Condition</th>
+          <th>Location</th>
         </tr>
       </thead>
       <tbody>
@@ -74,10 +79,10 @@
         {{if .Type}}<span class="type">{{.Type}}</span>{{end}}
         <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
         {{if or .Facility .SubLocation}}
-      <span>
-        {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
-      </span>
-  {{end}}
+        <span>
+          {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
+        </span>
+        {{end}}
       </div>
     </a>
     {{end}}
@@ -95,9 +100,7 @@
 <script>
 (function () {
   var items = Array.from(document.querySelectorAll('.selectable-machine'));
-  if (!items.length) {
-    return;
-  }
+  if (!items.length) { return; }
 
   var selection = new Set();
   var lastIndex = -1;
@@ -188,7 +191,18 @@
   });
 
   groupButton.addEventListener('click', function () {
-    // Group edit is not implemented yet.
+    if (!selection.size) { return; }
+
+    var ids = Array.from(selection).map(function (index) {
+      return items[index].dataset.machineId;
+    }).filter(Boolean);
+
+    if (!ids.length) { return; }
+
+    var query = ids.map(function (id) {
+      return 'ids=' + encodeURIComponent(id);
+    }).join('&');
+    window.location.href = '/machine/group-edit?' + query;
   });
 
   updateToolbar();

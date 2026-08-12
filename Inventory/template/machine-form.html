@@ -1,46 +1,64 @@
 {{template "head" .}}
 {{with .Data}}
+{{$data := .}}
 {{$m := .Machine}}
 <div class="crumb">
   <a href="/">Machines</a> //
-  {{if .IsNew}}New machine{{else}}<a href="/machine?id={{$m.Id}}">{{$m.Asset}}</a> // Edit{{end}}
+  {{if $data.IsNew}}
+    New machine
+  {{else if $data.IsGroupEdit}}
+    Group edit
+  {{else}}
+    <a href="/machine?id={{$m.Id}}">{{$m.Asset}}</a> // Edit
+  {{end}}
 </div>
 
-{{if .CreatedAsset}}
+{{if $data.CreatedAsset}}
 <div class="flash small success">
-  <p>{{.CreatedAsset}} created successfully.</p>
+  <p>{{$data.CreatedAsset}} created successfully.</p>
 </div>
 {{end}}
 
 <div class="page-head form-inline">
-  <h1>{{if .IsNew}}Log a machine{{else}}Edit {{$m.Asset}}{{end}}</h1>
-    <div class="head-actions">
-    {{if .IsNew}}
+  <h1>{{if $data.IsNew}}Log a machine{{else if $data.IsGroupEdit}}Group edit machines{{else}}Edit {{$m.Asset}}{{end}}</h1>
+  <div class="head-actions">
+    {{if $data.IsGroupEdit}}
+      <div class="hint">{{len $data.Machines}} selected machines. Leave fields blank to keep existing values.</div>
+    {{else if $data.IsNew}}
     {{else}}
-    <form method="post" action="/machine/delete-to-inventory" style="display:inline"
-          onsubmit="return confirm('Delete {{$m.Asset}} but move its {{len $m.Parts}} part(s) to inventory? This cannot be undone.');">
-      <input type="hidden" name="id" value="{{$m.Id}}">
-      <button class="btn danger" type="submit">Delete Machine</button>
-    </form>
-    <form method="post" action="/machine/delete" style="display:inline"
-          onsubmit="return confirm('Delete {{$m.Asset}} and its {{len $m.Parts}} installed part(s)? This cannot be undone.\n\nTo keep any parts, cancel and reassign them to loose inventory first.');">
-      <input type="hidden" name="id" value="{{$m.Id}}">
-      <button class="btn danger" type="submit">Delete Machine & Parts</button>
-    </form>
+      <form method="post" action="/machine/delete-to-inventory" style="display:inline"
+            onsubmit="return confirm('Delete {{$m.Asset}} but move its {{len $m.Parts}} part(s) to inventory? This cannot be undone.');">
+        <input type="hidden" name="id" value="{{$m.Id}}">
+        <button class="btn danger" type="submit">Delete Machine</button>
+      </form>
+      <form method="post" action="/machine/delete" style="display:inline"
+            onsubmit="return confirm('Delete {{$m.Asset}} and its {{len $m.Parts}} installed part(s)? This cannot be undone.\n\nTo keep any parts, cancel and reassign them to loose inventory first.');">
+        <input type="hidden" name="id" value="{{$m.Id}}">
+        <button class="btn danger" type="submit">Delete Machine & Parts</button>
+      </form>
     {{end}}
   </div>
 </div>
 
-<form class="stack" method="post"
-      action="/machine/edit?id={{if .IsNew}}new{{else}}{{$m.Id}}{{end}}">
+<form class="stack" method="post" action="{{if $data.IsGroupEdit}}/machine/group-edit{{else}}/machine/edit?id={{if $data.IsNew}}new{{else}}{{$m.Id}}{{end}}{{end}}">
+  {{if $data.IsGroupEdit}}
+    {{range $data.SelectedIds}}
+      <input type="hidden" name="selected_ids" value="{{.}}">
+    {{end}}
+  {{end}}
   <div class="field">
     <label for="name">Name</label>
-    <input id="name" name="name" value="{{$m.Name}}" placeholder="e.g. Dell OptiPlex 7060" autofocus>
+    <input id="name" name="name"
+           value="{{if $data.IsGroupEdit}}{{$data.Shared.Name}}{{else}}{{$m.Name}}{{end}}"
+           placeholder="{{if and $data.IsGroupEdit $data.Shared.NameVaried}}Varied{{end}}" autofocus>
   </div>
 
   <div class="field">
     <label for="type">Type</label>
-    <input id="type" name="type" value="{{$m.Type}}" list="typeList" placeholder="Desktop">
+    <input id="type" name="type"
+           value="{{if $data.IsGroupEdit}}{{$data.Shared.Type}}{{else}}{{$m.Type}}{{end}}"
+           list="typeList"
+           placeholder="{{if and $data.IsGroupEdit $data.Shared.TypeVaried}}Varied{{end}}">
     <datalist id="typeList">
       <option>Desktop</option><option>Laptop</option><option>Server</option>
       <option>All-in-One</option><option>Mini PC</option><option>Workstation</option>
@@ -51,38 +69,50 @@
     <div class="field">
       <label for="status">Status</label>
       <select id="status" name="status">
-        {{range .MachineStatuses}}
-        <option value="{{.}}" {{if eq . $m.Status}}selected{{end}}>{{.}}</option>
+        <option value="">{{if $data.IsGroupEdit}}{{if $data.Shared.StatusVaried}}Varied{{else if $data.Shared.Status}}{{$data.Shared.Status}}{{else}}-- Select status --{{end}}{{else}}-- Select status --{{end}}</option>
+        {{range $data.MachineStatuses}}
+          <option value="{{.}}"
+            {{if $data.IsGroupEdit}}
+              {{if eq . $data.Shared.Status}}selected{{end}}
+            {{else}}
+              {{if eq . $m.Status}}selected{{end}}
+            {{end}}>{{.}}</option>
         {{end}}
       </select>
     </div>
 
     <div class="field">
       <label for="condition">Condition</label>
-      <input id="condition" name="condition" value="{{$m.Condition}}" list="condList" placeholder="Good">
+      <input id="condition" name="condition"
+             value="{{if $data.IsGroupEdit}}{{$data.Shared.Condition}}{{else}}{{$m.Condition}}{{end}}"
+             list="condList"
+             placeholder="{{if and $data.IsGroupEdit $data.Shared.ConditionVaried}}Varied{{end}}">
       <datalist id="condList">
         <option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option>
       </datalist>
     </div>
   </div>
 
-
-
   <div class="form-row">
     <div class="field">
       <label for="facility">Facility</label>
-      <select id="facility" name="facility" required>
-        <option value="" {{if eq $m.Facility ""}}selected{{end}}>-- Select facility --</option>
-        {{range .FacilityOptions}}
-        <option value="{{.}}" {{if eq . $m.Facility}}selected{{end}}>{{.}}</option>
+      <select id="facility" name="facility" {{if not $data.IsGroupEdit}}required{{end}}>
+        <option value="">{{if $data.IsGroupEdit}}{{if $data.Shared.FacilityVaried}}Varied{{else if $data.Shared.Facility}}{{$data.Shared.Facility}}{{else}}-- Select facility --{{end}}{{else}}-- Select facility --{{end}}</option>
+        {{range $data.FacilityOptions}}
+          <option value="{{.}}"
+            {{if $data.IsGroupEdit}}
+              {{if eq . $data.Shared.Facility}}selected{{end}}
+            {{else}}
+              {{if eq . $m.Facility}}selected{{end}}
+            {{end}}>{{.}}</option>
         {{end}}
       </select>
     </div>
 
     <div class="field">
       <label for="sub_location">Sub-location</label>
-      <select id="sub_location" name="sub_location" required>
-        <option value="">-- Select --</option>
+      <select id="sub_location" name="sub_location" {{if not $data.IsGroupEdit}}required{{end}}>
+        <option value="">{{if $data.IsGroupEdit}}{{if $data.Shared.SubLocationVaried}}Varied{{else if $data.Shared.SubLocation}}{{$data.Shared.SubLocation}}{{else}}-- Select --{{end}}{{else}}-- Select --{{end}}</option>
       </select>
     </div>
   </div>
@@ -99,6 +129,9 @@
       "Other": ["N/A"]
     };
 
+    // Preserve the server-side placeholder (e.g. "Varied") when in group-edit mode.
+    const sublocationPlaceholderText = "{{if $data.IsGroupEdit}}{{if $data.Shared.SubLocationVaried}}Varied{{else if $data.Shared.SubLocation}}{{$data.Shared.SubLocation}}{{else}}-- Select --{{end}}{{else}}-- Select --{{end}}";
+
     function updateSublocations() {
       const facility = facilitySelect.value;
       const options = sublocationsByFacility[facility] || [];
@@ -107,18 +140,16 @@
 
       const placeholder = document.createElement("option");
       placeholder.value = "";
-      placeholder.textContent = "-- Select --";
+      placeholder.textContent = sublocationPlaceholderText;
       sublocationSelect.appendChild(placeholder);
 
       options.forEach((value) => {
         const opt = document.createElement("option");
         opt.value = value;
         opt.textContent = value;
-
-        if (value === "{{ $m.SubLocation }}") {
+        if (value === "{{if $data.IsGroupEdit}}{{$data.Shared.SubLocation}}{{else}}{{$m.SubLocation}}{{end}}") {
           opt.selected = true;
         }
-
         sublocationSelect.appendChild(opt);
       });
     }
@@ -129,274 +160,26 @@
 
   <div class="field">
     <label for="notes">Notes</label>
-    <textarea id="notes" name="notes" placeholder="Symptoms, history, next steps…">{{$m.Notes}}</textarea>
+    <textarea id="notes" name="notes" placeholder="{{if and $data.IsGroupEdit $data.Shared.NotesVaried}}Varied{{end}}">{{if $data.IsGroupEdit}}{{$data.Shared.Notes}}{{else}}{{$m.Notes}}{{end}}</textarea>
   </div>
 
-  {{if .IsNew}}
-  <div class="panel">
-    <h2>Parts</h2>
-
-    <table class="parts-table" id="stagedPartsTable">
-      <thead>
-        <tr>
-          <th>Category</th><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th><th>Source</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="stagedPartsBody"></tbody>
-    </table>
-    <p class="sub" id="stagedPartsEmpty" style="margin-top:12px">No parts added yet.</p>
-
-    <input type="hidden" name="parts_json" id="partsJson" value="[]">
-
-    <div class="form-actions" style="margin-top:16px">
-      <button class="btn ghost small" type="button" id="toggleInventoryPicker">+ Pull from inventory</button>
-      <button class="btn ghost small" type="button" id="toggleNewPartForm">+ New part</button>
-    </div>
-
-    <div class="picker-box hidden" id="inventoryPicker">
-      <div class="field">
-        <label for="inventoryFilter">Filter loose inventory</label>
-        <input id="inventoryFilter" placeholder="Search category, model, spec, serial…">
-      </div>
-      <div id="inventoryResults"></div>
-    </div>
-
-    <div class="picker-box hidden" id="newPartForm">
-      <div class="form-row">
-        <div class="field">
-          <label for="newPartCategory">Category</label>
-          <input id="newPartCategory" list="newPartCatList" placeholder="RAM">
-          <datalist id="newPartCatList">
-            {{range partCategories}}<option>{{.}}</option>{{end}}
-          </datalist>
-        </div>
-        <div class="field">
-          <label for="newPartCondition">Condition</label>
-          <select id="newPartCondition">
-            {{range partConditions}}
-            <option value="{{.}}" {{if eq . "Untested"}}selected{{end}}>{{.}}</option>
-            {{end}}
-          </select>
-        </div>
-      </div>
-      <div class="field">
-        <label for="newPartModel">Model</label>
-        <input id="newPartModel" placeholder="e.g. Corsair Vengeance 16GB DDR4-3200">
-      </div>
-      <div class="field">
-        <label for="newPartSpec">Spec / details</label>
-        <input id="newPartSpec" placeholder="e.g. 2x8GB, CL16, tested with MemTest">
-      </div>
-      <div class="form-row">
-        <div class="field mono">
-          <label for="newPartQuantity">Quantity</label>
-          <input id="newPartQuantity" type="number" min="1" value="1">
-        </div>
-        <div class="field mono">
-          <label for="newPartSerial">Serial (optional)</label>
-          <input id="newPartSerial">
-        </div>
-      </div>
-      <div class="field">
-        <label for="newPartNotes">Notes</label>
-        <textarea id="newPartNotes" placeholder="Anything worth remembering about this part…"></textarea>
-      </div>
-      <div class="form-actions">
-        <button class="btn small" type="button" id="addNewPart">Add part</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    (function () {
-      var staged = [];
-      var stagedExistingIds = new Set();
-      var inventoryCache = null;
-
-      var body = document.getElementById('stagedPartsBody');
-      var empty = document.getElementById('stagedPartsEmpty');
-      var table = document.getElementById('stagedPartsTable');
-      var hiddenInput = document.getElementById('partsJson');
-
-      function esc(s) {
-        return (s || '').replace(/[&<>"]/g, function (c) {
-          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-        });
-      }
-
-      function renderStaged() {
-        hiddenInput.value = JSON.stringify(staged);
-        if (!staged.length) {
-          table.style.display = 'none';
-          empty.style.display = '';
-          body.innerHTML = '';
-          return;
-        }
-        table.style.display = '';
-        empty.style.display = 'none';
-        body.innerHTML = staged.map(function (row, i) {
-          return '<tr>' +
-            '<td><span class="cat">' + esc(row.category || '?') + '</span></td>' +
-            '<td><div class="model">' + esc(row.model || '(unspecified)') + '</div>' +
-            (row.spec ? '<div class="spec">' + esc(row.spec) + '</div>' : '') + '</td>' +
-            '<td class="qty">' + (row.quantity || 1) + '&times;</td>' +
-            '<td><span class="cond ' + esc((row.condition || '').toLowerCase()) + '">' + esc(row.condition || 'Untested') + '</span></td>' +
-            '<td>' + (row.source === 'existing' ? 'Inventory' : 'New') + '</td>' +
-            '<td><button type="button" class="btn danger small" data-remove="' + i + '">Remove</button></td>' +
-            '</tr>';
-        }).join('');
-      }
-
-      body.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-remove]');
-        if (!btn) return;
-        var i = parseInt(btn.getAttribute('data-remove'), 10);
-        var row = staged[i];
-        if (row && row.source === 'existing') {
-          stagedExistingIds.delete(row.existing_id);
-        }
-        staged.splice(i, 1);
-        renderStaged();
-        renderInventoryResults();
-      });
-
-      // --- inventory picker ---
-
-      var pickerBox = document.getElementById('inventoryPicker');
-      var newPartBox = document.getElementById('newPartForm');
-      var filterInput = document.getElementById('inventoryFilter');
-      var resultsBox = document.getElementById('inventoryResults');
-
-      function closeAll() {
-        pickerBox.classList.add('hidden');
-        newPartBox.classList.add('hidden');
-      }
-
-      document.getElementById('toggleInventoryPicker').addEventListener('click', function () {
-        var opening = pickerBox.classList.contains('hidden');
-        closeAll();
-        if (opening) {
-          pickerBox.classList.remove('hidden');
-          loadInventory();
-        }
-      });
-
-      document.getElementById('toggleNewPartForm').addEventListener('click', function () {
-        var opening = newPartBox.classList.contains('hidden');
-        closeAll();
-        if (opening) newPartBox.classList.remove('hidden');
-      });
-
-      function loadInventory() {
-        if (inventoryCache) { renderInventoryResults(); return; }
-        fetch('/api/inventory')
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            inventoryCache = data.parts || [];
-            renderInventoryResults();
-          })
-          .catch(function () {
-            inventoryCache = [];
-            renderInventoryResults();
-          });
-      }
-
-      function renderInventoryResults() {
-        if (!inventoryCache) return;
-        var q = filterInput.value.trim().toLowerCase();
-        var rows = inventoryCache.filter(function (p) {
-          if (stagedExistingIds.has(p.id)) return false;
-          if (!q) return true;
-          var hay = [p.category, p.model, p.spec, p.serial].join(' ').toLowerCase();
-          return hay.indexOf(q) !== -1;
-        });
-        if (!rows.length) {
-          resultsBox.innerHTML = '<div class="live-empty">No matching loose parts.</div>';
-          return;
-        }
-        resultsBox.innerHTML = rows.map(function (p) {
-          var qty = p.quantity || 1;
-          return '<div class="picker-row" data-id="' + p.id + '">' +
-            '<span class="lr-title">' + esc(p.category || '?') + ' &middot; ' + esc(p.model || '(unspecified)') + '</span>' +
-            '<span class="lr-sub">' + esc(p.spec || '') + '</span>' +
-            '<span class="lr-badge">' + qty + '&times; ' + esc(p.condition || 'Untested') + '</span>' +
-            (qty > 1
-              ? '<input type="number" class="picker-qty mono" min="1" max="' + qty + '" value="' + qty + '" title="Quantity to add">'
-              : '') +
-            '<button type="button" class="btn small" data-add="' + p.id + '">Add</button>' +
-            '</div>';
-        }).join('');
-      }
-
-      filterInput.addEventListener('input', renderInventoryResults);
-
-      resultsBox.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-add]');
-        if (!btn) return;
-        var id = parseInt(btn.getAttribute('data-add'), 10);
-        var p = inventoryCache.find(function (x) { return x.id === id; });
-        if (!p) return;
-        var row = btn.closest('.picker-row');
-        var qtyInput = row.querySelector('.picker-qty');
-        var maxQty = p.quantity || 1;
-        var qty = qtyInput ? Math.max(1, Math.min(parseInt(qtyInput.value, 10) || 1, maxQty)) : maxQty;
-
-        stagedExistingIds.add(id);
-        staged.push({
-          source: 'existing',
-          existing_id: id,
-          category: p.category, model: p.model, spec: p.spec,
-          quantity: qty, condition: p.condition,
-          serial: p.serial, notes: p.notes
-        });
-        renderStaged();
-        renderInventoryResults();
-      });
-
-      // --- new-part mini form ---
-
-      document.getElementById('addNewPart').addEventListener('click', function () {
-        var category = document.getElementById('newPartCategory').value.trim();
-        var model = document.getElementById('newPartModel').value.trim();
-        var spec = document.getElementById('newPartSpec').value.trim();
-        if (!category && !model && !spec) return;
-        staged.push({
-          source: 'new',
-          existing_id: 0,
-          category: category,
-          model: model,
-          spec: spec,
-          quantity: parseInt(document.getElementById('newPartQuantity').value, 10) || 1,
-          condition: document.getElementById('newPartCondition').value,
-          serial: document.getElementById('newPartSerial').value.trim(),
-          notes: document.getElementById('newPartNotes').value.trim()
-        });
-        renderStaged();
-        document.getElementById('newPartCategory').value = '';
-        document.getElementById('newPartModel').value = '';
-        document.getElementById('newPartSpec').value = '';
-        document.getElementById('newPartQuantity').value = '1';
-        document.getElementById('newPartSerial').value = '';
-        document.getElementById('newPartNotes').value = '';
-      });
-
-      renderStaged();
-    })();
-  </script>
+  {{if $data.IsNew}}
+  <!-- existing new-machine parts UI -->
   {{end}}
 
   <div class="form-actions">
-    <button class="btn" type="submit">{{if .IsNew}}Create machine{{else}}Save changes{{end}}</button>
-    {{if .IsNew}}
-    <button class="btn" type="submit" name="stay" value="1">
-      Create and stay
-    </button>
-    <div class="field action-field">
-      <label for="quantity">Quantity</label>
-      <input id="quantity" name="quantity" type="number" min="1" value="{{if .Quantity}}{{.Quantity}}{{else}}1{{end}}" placeholder="1">
-    </div>
+    <button class="btn" type="submit">{{if $data.IsNew}}Create machine{{else if $data.IsGroupEdit}}Apply changes{{else}}Save changes{{end}}</button>
+    {{if $data.IsNew}}
+      <button class="btn" type="submit" name="stay" value="1">
+        Create and stay
+      </button>
+      <div class="field action-field">
+        <label for="quantity">Quantity</label>
+        <input id="quantity" name="quantity" type="number" min="1" value="{{if $data.Quantity}}{{$data.Quantity}}{{else}}1{{end}}" placeholder="1">
+      </div>
+    {{else}}
+      <a class="btn ghost" href="{{if $data.IsGroupEdit}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
     {{end}}
-    <a class="btn ghost" href="{{if .IsNew}}/{{else}}/machine?id={{$m.Id}}{{end}}">Cancel</a>
   </div>
 </form>
 {{end}}
