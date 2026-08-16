@@ -54,8 +54,8 @@
         {{range .Machines}}
         <tr class="selectable-machine selectable-row" data-machine-id="{{.Id}}">
           <td class="mono">{{.Asset}}</td>
-          <td><a href="/machine?id={{.Id}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</a></td>
-          <td>{{if .Type}}{{.Type}}{{else}}&mdash;{{end}}</td>
+          <td><a class="cell-truncate" title="{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}" href="/machine?id={{.Id}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</a></td>
+          <td>{{if .Type}}<span class="cell-truncate cell-truncate-sm" title="{{.Type}}">{{.Type}}</span>{{else}}&mdash;{{end}}</td>
           <td><span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span></td>
           <td>{{if .Condition}}{{.Condition}}{{else}}&mdash;{{end}}</td>
           <td>
@@ -79,9 +79,9 @@
     {{range .Machines}}
     <a class="tag s-{{statusSlug .Status}} selectable-machine" data-machine-id="{{.Id}}" href="/machine?id={{.Id}}">
       <div class="asset">{{.Asset}}</div>
-      <div class="name">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</div>
+      <div class="name cell-truncate" title="{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</div>
       <div class="meta">
-        {{if .Type}}<span class="type">{{.Type}}</span>{{end}}
+        {{if .Type}}<span class="type cell-truncate cell-truncate-sm" title="{{.Type}}">{{.Type}}</span>{{end}}
         <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
         {{if or .Facility .SubLocation}}
         <span>

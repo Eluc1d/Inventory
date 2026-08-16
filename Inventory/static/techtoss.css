@@ -346,23 +346,49 @@ main {
 .parts-table .spec { color: var(--ink-soft); font-size: 13px; }
 .parts-table .qty { font-family: var(--mono); text-align: right; }
 
-/* Truncate long model/spec text with an ellipsis so columns after it (like
-   Location) stay aligned row to row; click the row to see the full text. */
+/* Fixed column widths (set via <colgroup> in the template) so every column
+   lines up at the exact same position across every location/category panel
+   on the page — with the default auto layout, each <table> sizes its own
+   columns from only its own rows, so the same column would land at a
+   different width in every panel depending on what happened to be in it. */
+.parts-table.truncating { table-layout: fixed; }
+
+/* Truncate long model/spec/category/location text with an ellipsis so later
+   columns stay aligned row to row; click the row to see the full text. */
 .parts-table.truncating .model,
-.parts-table.truncating .spec {
+.parts-table.truncating .spec,
+.parts-table.truncating .cat,
+.parts-table.truncating .loc {
+  display: inline-block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 320px;
+  vertical-align: bottom;
 }
 .expandable-row { cursor: pointer; }
 .expandable-row.expanded .model,
-.expandable-row.expanded .spec {
+.expandable-row.expanded .spec,
+.expandable-row.expanded .cat,
+.expandable-row.expanded .loc {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
   max-width: none;
 }
+
+/* Same idea for the Workshop table/cards: clip long free-text (Name, Type)
+   with an ellipsis instead of letting it overflow into neighboring columns
+   or bubbles. Hover shows the full text via the element's title attribute. */
+.cell-truncate {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.cell-truncate-sm { max-width: 140px; }
 
 /* Notes bubble: a small toggle button that reveals an item's Notes text. */
 .notes-toggle {

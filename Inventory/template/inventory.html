@@ -31,6 +31,14 @@
     <div class="panel">
       <div class="inv-cat">{{.Category}} <span class="units">&middot; {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
       <table class="parts-table truncating">
+        <colgroup>
+          <col>
+          <col style="width:170px">
+          <col style="width:70px">
+          <col style="width:110px">
+          <col style="width:44px">
+          {{if $editable}}<col style="width:150px">{{end}}
+        </colgroup>
         <thead>
           <tr><th>Model / spec</th><th>Location</th><th style="text-align:right">Qty</th><th>Condition</th><th></th>{{if $editable}}<th></th>{{end}}</tr>
         </thead>
@@ -42,11 +50,13 @@
               {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
             </td>
             <td>
-              {{if or .Facility .SubLocation}}
-                {{.Facility}}{{if and .Facility .SubLocation}}, {{end}}{{.SubLocation}}
-              {{else}}
-                &mdash;
-              {{end}}
+              <span class="loc" title="{{if or .Facility .SubLocation}}{{.Facility}}{{if and .Facility .SubLocation}}, {{end}}{{.SubLocation}}{{else}}&mdash;{{end}}">
+                {{if or .Facility .SubLocation}}
+                  {{.Facility}}{{if and .Facility .SubLocation}}, {{end}}{{.SubLocation}}
+                {{else}}
+                  &mdash;
+                {{end}}
+              </span>
             </td>
             <td class="qty">{{.Quantity}}&times;</td>
             <td><span class="cond {{lower .Condition}}">{{if .Condition}}{{.Condition}}{{else}}Untested{{end}}</span></td>
@@ -91,6 +101,14 @@
       {{range .Subs}}
       <div class="inv-subloc">{{.SubLocation}} <span class="units">&middot; {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
       <table class="parts-table truncating">
+        <colgroup>
+          <col style="width:130px">
+          <col>
+          <col style="width:70px">
+          <col style="width:110px">
+          <col style="width:44px">
+          {{if $editable}}<col style="width:150px">{{end}}
+        </colgroup>
         <thead>
           <tr><th>Category</th><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th><th></th>{{if $editable}}<th></th>{{end}}</tr>
         </thead>
