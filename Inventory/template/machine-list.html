@@ -9,11 +9,12 @@
     <h1>Workbench</h1>
     <div class="sub">{{.Total}} machine{{if ne .Total 1}}s{{end}} tracked · {{.LooseCount}} loose part{{if ne .LooseCount 1}}s{{end}} in inventory</div>
   </div>
-  <div style="display:flex; align-items:center; gap:10px">
+  <div class="page-actions">
     <div class="view-toggle">
       <a class="view-btn {{if ne $view "rows"}}active{{end}}" href="/?view=bubble{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Bubbles</a>
       <a class="view-btn {{if eq $view "rows"}}active{{end}}" href="/?view=rows{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Rows</a>
     </div>
+    <a href="/export/machines" class="btn btn-primary">Export</a>
     {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
   </div>
 </div>

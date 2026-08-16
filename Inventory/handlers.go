@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net"
@@ -75,6 +76,8 @@ func (h *Handlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/part/delete", h.partDelete)
 	mux.HandleFunc("/part/unassign", h.partUnassign)
 	mux.HandleFunc("/part/pull", h.partPull)
+	mux.HandleFunc("/export/machines", h.ExportMachinesHandler)
+	mux.HandleFunc("/export/parts", h.ExportPartsHandler)
 }
 
 // ------------------------------------------------------------- dashboard
@@ -1178,4 +1181,61 @@ func (h *Handlers) machineGroupMoveParts(w http.ResponseWriter, r *http.Request)
 	}
 
 	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
+}
+
+// ExportMachinesHandler exports all machines to TSV format
+func (h *Handlers) ExportMachinesHandler(w http.ResponseWriter, r *http.Request) {
+	machines := h.store.AllMachines()
+
+	w.Header().Set("Content-Type", "text/tab-separated-values; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=machines.tsv")
+
+	// Write BOM for Google Docs compatibility
+	w.Write([]byte("\uFEFF"))
+
+	// Write header
+	fmt.Fprintln(w, "Asset\tName\tType\tStatus\tCondition\tFacility\tSub-Location\tNotes")
+
+	// Write data rows
+	for _, machine := range machines {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			machine.Asset,
+			machine.Name,
+			machine.Type,
+			machine.Status,
+			machine.Condition,
+			machine.Facility,
+			machine.SubLocation,
+			machine.Notes,
+		)
+	}
+}
+
+// ExportPartsHandler exports all parts to TSV format
+func (h *Handlers) ExportPartsHandler(w http.ResponseWriter, r *http.Request) {
+	parts := h.store.PartsForMachine(0) // Get only loose parts for inventory export
+
+	w.Header().Set("Content-Type", "text/tab-separated-values; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=parts.tsv")
+
+	// Write BOM for Google Docs compatibility
+	w.Write([]byte("\uFEFF"))
+
+	// Write header
+	fmt.Fprintln(w, "Category\tModel\tSpec\tQuantity\tCondition\tSerial\tFacility\tSub-Location\tNotes")
+
+	// Write data rows
+	for _, part := range parts {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+			part.Category,
+			part.Model,
+			part.Spec,
+			part.Quantity,
+			part.Condition,
+			part.Serial,
+			part.Facility,
+			part.SubLocation,
+			part.Notes,
+		)
+	}
 }
