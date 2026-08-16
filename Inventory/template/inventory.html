@@ -6,7 +6,10 @@
     <h1>Parts inventory</h1>
     <div class="sub">{{.Total}} loose part line{{if ne .Total 1}}s{{end}} not currently installed in a machine</div>
   </div>
-  {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
+  <div class="page-actions">
+    <a href="/export/parts" class="btn btn-primary">Export</a>
+    {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
+  </div>
 </div>
 
 {{if .Groups}}
