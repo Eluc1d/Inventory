@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,19 +62,19 @@ type page struct {
 }
 
 func (h *Handlers) Register(mux *http.ServeMux) {
-    mux.HandleFunc("/", h.dashboard)
-    mux.HandleFunc("/machine/group-edit", h.machineGroupEdit)
-    mux.HandleFunc("/machine/group-edit/", h.machineGroupEdit)
-    mux.HandleFunc("/machine", h.machineDetail)
-    mux.HandleFunc("/machine/edit", h.machineEdit)
-    mux.HandleFunc("/machine/delete", h.machineDelete)
-    mux.HandleFunc("/machine/delete-to-inventory", h.machineDeleteToInventory)
-    mux.HandleFunc("/machine/group-move-parts", h.machineGroupMoveParts)
-    mux.HandleFunc("/inventory", h.inventory)
-    mux.HandleFunc("/part/edit", h.partEdit)
-    mux.HandleFunc("/part/delete", h.partDelete)
-    mux.HandleFunc("/part/unassign", h.partUnassign)
-    mux.HandleFunc("/part/pull", h.partPull)
+	mux.HandleFunc("/", h.dashboard)
+	mux.HandleFunc("/machine/group-edit", h.machineGroupEdit)
+	mux.HandleFunc("/machine/group-edit/", h.machineGroupEdit)
+	mux.HandleFunc("/machine", h.machineDetail)
+	mux.HandleFunc("/machine/edit", h.machineEdit)
+	mux.HandleFunc("/machine/delete", h.machineDelete)
+	mux.HandleFunc("/machine/delete-to-inventory", h.machineDeleteToInventory)
+	mux.HandleFunc("/machine/group-move-parts", h.machineGroupMoveParts)
+	mux.HandleFunc("/inventory", h.inventory)
+	mux.HandleFunc("/part/edit", h.partEdit)
+	mux.HandleFunc("/part/delete", h.partDelete)
+	mux.HandleFunc("/part/unassign", h.partUnassign)
+	mux.HandleFunc("/part/pull", h.partPull)
 }
 
 // ------------------------------------------------------------- dashboard
@@ -85,6 +87,19 @@ type dashboardData struct {
 	Total        int
 	View         string // "bubble" | "rows"
 	StatusFilter string
+	Sort         string // "" | "asset" | "name" | "type" | "status" | "condition" | "location"
+	SortDir      string // "asc" | "desc"
+}
+
+// machineSortKeys maps a Workshop column-sort key to the string it sorts on.
+// "location" sorts on Facility first, Sub-location second.
+var machineSortKeys = map[string]func(*Machine) string{
+	"asset":     func(m *Machine) string { return m.Asset },
+	"name":      func(m *Machine) string { return m.Name },
+	"type":      func(m *Machine) string { return m.Type },
+	"status":    func(m *Machine) string { return m.Status },
+	"condition": func(m *Machine) string { return m.Condition },
+	"location":  func(m *Machine) string { return m.Facility + "\x00" + m.SubLocation },
 }
 
 func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +112,11 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	view := r.URL.Query().Get("view")
 	if view != "rows" {
 		view = "bubble"
+	}
+	sortCol := r.URL.Query().Get("sort")
+	sortDir := r.URL.Query().Get("dir")
+	if sortDir != "desc" {
+		sortDir = "asc"
 	}
 
 	counts := map[string]int{}
@@ -113,8 +133,20 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	// Newest first on the board.
-	sort.SliceStable(shown, func(i, j int) bool { return shown[i].Id > shown[j].Id })
+
+	if keyFn, ok := machineSortKeys[sortCol]; ok {
+		sort.SliceStable(shown, func(i, j int) bool {
+			a, b := strings.ToLower(keyFn(shown[i])), strings.ToLower(keyFn(shown[j]))
+			if sortDir == "desc" {
+				a, b = b, a
+			}
+			return a < b
+		})
+	} else {
+		sortCol = ""
+		// Newest first on the board.
+		sort.SliceStable(shown, func(i, j int) bool { return shown[i].Id > shown[j].Id })
+	}
 
 	flash := ""
 	created := atoiDefault(r.URL.Query().Get("created"), 0)
@@ -134,6 +166,8 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 		Total:        len(machines),
 		View:         view,
 		StatusFilter: filter,
+		Sort:         sortCol,
+		SortDir:      sortDir,
 	}
 	h.tmpl.Render(w, http.StatusOK, "machine-list.html", &page{
 		Title:    "Workbench",
@@ -147,130 +181,130 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------- machine detail
 
 func (h *Handlers) machineDetail(w http.ResponseWriter, r *http.Request) {
-    id := atoiDefault(r.URL.Query().Get("id"), 0)
-    m := h.store.FindMachine(id)
-    if m == nil {
-        http.NotFound(w, r)
-        return
-    }
-    m.Parts = h.store.PartsForMachine(m.Id)
-    h.tmpl.Render(w, http.StatusOK, "machine-detail.html", &page{
-        Title:    m.Asset + " " + m.Name,
-        Editable: h.canEdit(r),
-        Active:   "machines",
-        Data:     m,
-    })
+	id := atoiDefault(r.URL.Query().Get("id"), 0)
+	m := h.store.FindMachine(id)
+	if m == nil {
+		http.NotFound(w, r)
+		return
+	}
+	m.Parts = h.store.PartsForMachine(m.Id)
+	h.tmpl.Render(w, http.StatusOK, "machine-detail.html", &page{
+		Title:    m.Asset + " " + m.Name,
+		Editable: h.canEdit(r),
+		Active:   "machines",
+		Data:     m,
+	})
 }
 
 // ------------------------------------------------------------ machine edit
 
 func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
-    if !h.canEdit(r) {
-        http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
-        return
-    }
+	if !h.canEdit(r) {
+		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+		return
+	}
 
-    idParam := r.URL.Query().Get("id")
-    isNew := idParam == "" || idParam == "new"
+	idParam := r.URL.Query().Get("id")
+	isNew := idParam == "" || idParam == "new"
 
-    if r.Method == http.MethodPost {
-        if err := r.ParseForm(); err != nil {
-            http.Error(w, "Invalid form submission.", http.StatusBadRequest)
-            return
-        }
+	if r.Method == http.MethodPost {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form submission.", http.StatusBadRequest)
+			return
+		}
 
-        asset := strings.TrimSpace(r.FormValue("asset"))
-        name := strings.TrimSpace(r.FormValue("name"))
-        typ := strings.TrimSpace(r.FormValue("type"))
-        status := strings.TrimSpace(r.FormValue("status"))
-        condition := strings.TrimSpace(r.FormValue("condition"))
-        facility := strings.TrimSpace(r.FormValue("facility"))
-        subLocation := strings.TrimSpace(r.FormValue("sub_location"))
-        notes := strings.TrimSpace(r.FormValue("notes"))
-        stay := r.FormValue("stay") == "1"
+		asset := strings.TrimSpace(r.FormValue("asset"))
+		name := strings.TrimSpace(r.FormValue("name"))
+		typ := strings.TrimSpace(r.FormValue("type"))
+		status := strings.TrimSpace(r.FormValue("status"))
+		condition := strings.TrimSpace(r.FormValue("condition"))
+		facility := strings.TrimSpace(r.FormValue("facility"))
+		subLocation := strings.TrimSpace(r.FormValue("sub_location"))
+		notes := strings.TrimSpace(r.FormValue("notes"))
+		stay := r.FormValue("stay") == "1"
 
-        if isNew {
-            m, errStr := h.store.CreateMachine(func(m *Machine) bool {
-                m.Asset = asset
-                m.Name = name
-                m.Type = typ
-                m.Status = status
-                m.Condition = condition
-                m.Facility = facility
-                m.SubLocation = subLocation
-                m.Notes = notes
-                return true
-            })
-            if m == nil {
-                http.Error(w, errStr, http.StatusBadRequest)
-                return
-            }
+		if isNew {
+			m, errStr := h.store.CreateMachine(func(m *Machine) bool {
+				m.Asset = asset
+				m.Name = name
+				m.Type = typ
+				m.Status = status
+				m.Condition = condition
+				m.Facility = facility
+				m.SubLocation = subLocation
+				m.Notes = notes
+				return true
+			})
+			if m == nil {
+				http.Error(w, errStr, http.StatusBadRequest)
+				return
+			}
 
-            h.applyStagedParts(r, m.Id)
-            if stay {
-                h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
-                    Title:    "Log a machine",
-                    Editable: true,
-                    Active:   "machines",
-                    Data: machineFormData{
-                        Machine:                m,
-                        IsNew:                  true,
-                        FacilityOptions:        FacilityOptions,
-                        SubLocationsByFacility: SubLocationsByFacility,
-                        MachineStatuses:        MachineStatuses,
-                    },
-                })
-                return
-            }
+			h.applyStagedParts(r, m.Id)
+			if stay {
+				h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
+					Title:    "Log a machine",
+					Editable: true,
+					Active:   "machines",
+					Data: machineFormData{
+						Machine:                m,
+						IsNew:                  true,
+						FacilityOptions:        FacilityOptions,
+						SubLocationsByFacility: SubLocationsByFacility,
+						MachineStatuses:        MachineStatuses,
+					},
+				})
+				return
+			}
 
-            http.Redirect(w, r, "/?created=1", http.StatusSeeOther)
-            return
-        }
+			http.Redirect(w, r, "/?created=1", http.StatusSeeOther)
+			return
+		}
 
-        id := atoiDefault(idParam, 0)
-        if ok, errStr := h.store.EditMachine(id, func(m *Machine) bool {
-            m.Asset = asset
-            m.Name = name
-            m.Type = typ
-            m.Status = status
-            m.Condition = condition
-            m.Facility = facility
-            m.SubLocation = subLocation
-            m.Notes = notes
-            return true
-        }); !ok {
-            http.Error(w, errStr, http.StatusBadRequest)
-            return
-        }
+		id := atoiDefault(idParam, 0)
+		if ok, errStr := h.store.EditMachine(id, func(m *Machine) bool {
+			m.Asset = asset
+			m.Name = name
+			m.Type = typ
+			m.Status = status
+			m.Condition = condition
+			m.Facility = facility
+			m.SubLocation = subLocation
+			m.Notes = notes
+			return true
+		}); !ok {
+			http.Error(w, errStr, http.StatusBadRequest)
+			return
+		}
 
-        h.applyStagedParts(r, id)
-        http.Redirect(w, r, "/machine?id="+strconv.Itoa(id), http.StatusSeeOther)
-        return
-    }
+		h.applyStagedParts(r, id)
+		http.Redirect(w, r, "/machine?id="+strconv.Itoa(id), http.StatusSeeOther)
+		return
+	}
 
-    m := &Machine{}
-    if !isNew {
-        id := atoiDefault(idParam, 0)
-        if found := h.store.FindMachine(id); found == nil {
-            http.NotFound(w, r)
-            return
-        } else {
-            m = found
-        }
-    }
+	m := &Machine{}
+	if !isNew {
+		id := atoiDefault(idParam, 0)
+		if found := h.store.FindMachine(id); found == nil {
+			http.NotFound(w, r)
+			return
+		} else {
+			m = found
+		}
+	}
 
-    h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
-        Title:    "Edit machine",
-        Editable: true,
-        Active:   "machines",
-        Data: machineFormData{
-            Machine:                m,
-            IsNew:                  isNew,
-            FacilityOptions:        FacilityOptions,
-            SubLocationsByFacility: SubLocationsByFacility,
-            MachineStatuses:        MachineStatuses,
-        },
-    })
+	h.tmpl.Render(w, http.StatusOK, "machine-form.html", &page{
+		Title:    "Edit machine",
+		Editable: true,
+		Active:   "machines",
+		Data: machineFormData{
+			Machine:                m,
+			IsNew:                  isNew,
+			FacilityOptions:        FacilityOptions,
+			SubLocationsByFacility: SubLocationsByFacility,
+			MachineStatuses:        MachineStatuses,
+		},
+	})
 }
 
 // ------------------------------------------------------------ machine edit
@@ -508,82 +542,240 @@ func subLocationRank(facility, sub string) int {
 	return len(SubLocationsByFacility[facility])
 }
 
+// categoryRank orders categories the same way facilityRank orders facilities:
+// by position in the canonical PartCategories list, with free-text categories
+// not in that list sorted last (alphabetically among themselves).
+func categoryRank(c string) int {
+	for i, opt := range PartCategories {
+		if opt == c {
+			return i
+		}
+	}
+	return len(PartCategories)
+}
+
+type subGroup struct {
+	SubLocation string
+	Parts       []*Part
+	Units       int
+}
+type facGroup struct {
+	Facility string
+	Subs     []*subGroup
+	Units    int
+}
+type catGroup struct {
+	Category string
+	Parts    []*Part
+	Units    int
+}
+type categoryTag struct {
+	Name   string
+	Count  int
+	Active bool
+	Href   template.URL
+}
+
+type inventoryData struct {
+	Groups         []*facGroup // used when GroupMode == "location" (default)
+	CategoryGroups []*catGroup // used when GroupMode == "category"
+	Total          int         // count after the category-tag filter
+	GroupMode      string      // "location" | "category"
+	Tags           []*categoryTag
+	AnyTagActive   bool
+	LocationHref   template.URL
+	CategoryHref   template.URL
+	ClearTagsHref  template.URL
+}
+
+// buildInventoryHref builds a safe, fully query-encoded /inventory URL for a
+// given group mode and category selection, toggling toggleCat in/out of the
+// selection when non-empty. Wrapped in template.URL so html/template treats
+// it as an already-safe URL rather than re-escaping the "&"/"=" it
+// necessarily contains — the arity here is unbounded (any number of selected
+// tags), so the literal-inlining convention used for view/status/sort
+// elsewhere in this app can't express it; this is Go's documented escape
+// hatch for exactly that case.
+func buildInventoryHref(group string, selected []string, toggleCat string) template.URL {
+	newCats := make([]string, 0, len(selected)+1)
+	found := false
+	for _, c := range selected {
+		if c == toggleCat {
+			found = true
+			continue
+		}
+		newCats = append(newCats, c)
+	}
+	if toggleCat != "" && !found {
+		newCats = append(newCats, toggleCat)
+	}
+	v := url.Values{}
+	if group == "category" {
+		v.Set("group", "category")
+	}
+	for _, c := range newCats {
+		v.Add("cat", c)
+	}
+	if len(v) == 0 {
+		return "/inventory"
+	}
+	return template.URL("/inventory?" + v.Encode())
+}
+
 func (h *Handlers) inventory(w http.ResponseWriter, r *http.Request) {
 	loose := h.store.PartsForMachine(0)
 
-	type subGroup struct {
-		SubLocation string
-		Parts       []*Part
-		Units       int
+	groupMode := r.URL.Query().Get("group")
+	if groupMode != "category" {
+		groupMode = "location"
 	}
-	type facGroup struct {
-		Facility string
-		Subs     []*subGroup
-		Units    int
+	selectedCats := r.URL.Query()["cat"]
+	selectedSet := map[string]bool{}
+	for _, c := range selectedCats {
+		selectedSet[c] = true
 	}
 
-	// Group loose parts by Facility, then Sub-location, for a shelf-by-shelf view.
-	byFacility := map[string]map[string][]*Part{}
+	catKey := func(p *Part) string {
+		if p.Category == "" {
+			return "Uncategorized"
+		}
+		return p.Category
+	}
+
+	// Category tags + their counts, computed on the full unfiltered set so
+	// the chips don't shift around as more tags get selected.
+	catCounts := map[string]int{}
 	for _, p := range loose {
-		fac, sub := p.Facility, p.SubLocation
-		if fac == "" {
-			fac = "Unspecified"
-		}
-		if sub == "" {
-			sub = "Unspecified"
-		}
-		if byFacility[fac] == nil {
-			byFacility[fac] = map[string][]*Part{}
-		}
-		byFacility[fac][sub] = append(byFacility[fac][sub], p)
+		catCounts[catKey(p)]++
 	}
-
-	facs := make([]string, 0, len(byFacility))
-	for f := range byFacility {
-		facs = append(facs, f)
+	catNames := make([]string, 0, len(catCounts))
+	for c := range catCounts {
+		catNames = append(catNames, c)
 	}
-	sort.SliceStable(facs, func(i, j int) bool {
-		ri, rj := facilityRank(facs[i]), facilityRank(facs[j])
+	sort.SliceStable(catNames, func(i, j int) bool {
+		ri, rj := categoryRank(catNames[i]), categoryRank(catNames[j])
 		if ri != rj {
 			return ri < rj
 		}
-		return facs[i] < facs[j]
+		return catNames[i] < catNames[j]
 	})
+	tags := make([]*categoryTag, 0, len(catNames))
+	for _, c := range catNames {
+		tags = append(tags, &categoryTag{
+			Name:   c,
+			Count:  catCounts[c],
+			Active: selectedSet[c],
+			Href:   buildInventoryHref(groupMode, selectedCats, c),
+		})
+	}
 
-	groups := make([]*facGroup, 0, len(facs))
-	for _, f := range facs {
-		subs := make([]string, 0, len(byFacility[f]))
-		for s := range byFacility[f] {
-			subs = append(subs, s)
+	// Narrow to the selected tags (OR across tags; no selection = no filter).
+	filtered := loose
+	if len(selectedSet) > 0 {
+		filtered = make([]*Part, 0, len(loose))
+		for _, p := range loose {
+			if selectedSet[catKey(p)] {
+				filtered = append(filtered, p)
+			}
 		}
-		sort.SliceStable(subs, func(i, j int) bool {
-			ri, rj := subLocationRank(f, subs[i]), subLocationRank(f, subs[j])
+	}
+
+	var groups []*facGroup
+	var catGroups []*catGroup
+
+	if groupMode == "category" {
+		byCat := map[string][]*Part{}
+		for _, p := range filtered {
+			byCat[catKey(p)] = append(byCat[catKey(p)], p)
+		}
+		names := make([]string, 0, len(byCat))
+		for c := range byCat {
+			names = append(names, c)
+		}
+		sort.SliceStable(names, func(i, j int) bool {
+			ri, rj := categoryRank(names[i]), categoryRank(names[j])
 			if ri != rj {
 				return ri < rj
 			}
-			return subs[i] < subs[j]
+			return names[i] < names[j]
 		})
-
-		fg := &facGroup{Facility: f}
-		for _, s := range subs {
+		for _, c := range names {
 			units := 0
-			for _, p := range byFacility[f][s] {
+			for _, p := range byCat[c] {
 				units += p.Quantity
 			}
-			fg.Subs = append(fg.Subs, &subGroup{SubLocation: s, Parts: byFacility[f][s], Units: units})
-			fg.Units += units
+			catGroups = append(catGroups, &catGroup{Category: c, Parts: byCat[c], Units: units})
 		}
-		groups = append(groups, fg)
+	} else {
+		// Group loose parts by Facility, then Sub-location, for a shelf-by-shelf view.
+		byFacility := map[string]map[string][]*Part{}
+		for _, p := range filtered {
+			fac, sub := p.Facility, p.SubLocation
+			if fac == "" {
+				fac = "Unspecified"
+			}
+			if sub == "" {
+				sub = "Unspecified"
+			}
+			if byFacility[fac] == nil {
+				byFacility[fac] = map[string][]*Part{}
+			}
+			byFacility[fac][sub] = append(byFacility[fac][sub], p)
+		}
+
+		facs := make([]string, 0, len(byFacility))
+		for f := range byFacility {
+			facs = append(facs, f)
+		}
+		sort.SliceStable(facs, func(i, j int) bool {
+			ri, rj := facilityRank(facs[i]), facilityRank(facs[j])
+			if ri != rj {
+				return ri < rj
+			}
+			return facs[i] < facs[j]
+		})
+
+		for _, f := range facs {
+			subs := make([]string, 0, len(byFacility[f]))
+			for s := range byFacility[f] {
+				subs = append(subs, s)
+			}
+			sort.SliceStable(subs, func(i, j int) bool {
+				ri, rj := subLocationRank(f, subs[i]), subLocationRank(f, subs[j])
+				if ri != rj {
+					return ri < rj
+				}
+				return subs[i] < subs[j]
+			})
+
+			fg := &facGroup{Facility: f}
+			for _, s := range subs {
+				units := 0
+				for _, p := range byFacility[f][s] {
+					units += p.Quantity
+				}
+				fg.Subs = append(fg.Subs, &subGroup{SubLocation: s, Parts: byFacility[f][s], Units: units})
+				fg.Units += units
+			}
+			groups = append(groups, fg)
+		}
 	}
 
 	h.tmpl.Render(w, http.StatusOK, "inventory.html", &page{
 		Title:    "Parts inventory",
 		Editable: h.canEdit(r),
 		Active:   "inventory",
-		Data: struct {
-			Groups []*facGroup
-			Total  int
-		}{groups, len(loose)},
+		Data: &inventoryData{
+			Groups:         groups,
+			CategoryGroups: catGroups,
+			Total:          len(filtered),
+			GroupMode:      groupMode,
+			Tags:           tags,
+			AnyTagActive:   len(selectedSet) > 0,
+			LocationHref:   buildInventoryHref("location", selectedCats, ""),
+			CategoryHref:   buildInventoryHref("category", selectedCats, ""),
+			ClearTagsHref:  buildInventoryHref(groupMode, nil, ""),
+		},
 	})
 }
 
@@ -845,145 +1037,145 @@ func redirectAfterPart(w http.ResponseWriter, r *http.Request, machineId int) {
 }
 
 type groupEditShared struct {
-    Asset            string
-    AssetVaried      bool
-    Name             string
-    NameVaried       bool
-    Type             string
-    TypeVaried       bool
-    Status           string
-    StatusVaried     bool
-    Condition        string
-    ConditionVaried  bool
-    Facility         string
-    FacilityVaried   bool
-    SubLocation      string
-    SubLocationVaried bool
-    Notes            string
-    NotesVaried      bool
+	Asset             string
+	AssetVaried       bool
+	Name              string
+	NameVaried        bool
+	Type              string
+	TypeVaried        bool
+	Status            string
+	StatusVaried      bool
+	Condition         string
+	ConditionVaried   bool
+	Facility          string
+	FacilityVaried    bool
+	SubLocation       string
+	SubLocationVaried bool
+	Notes             string
+	NotesVaried       bool
 }
 
 type machineFormData struct {
-    Machine                *Machine
-    IsNew                  bool
-    IsGroupEdit            bool
-    SelectedIds            []int
-    Shared                 groupEditShared
-    Machines               []*Machine
-    FacilityOptions        []string
-    SubLocationsByFacility map[string][]string
-    MachineStatuses        []string
-    SuccessMessage         string
-    CreatedAsset           string
-    CreatedName            string
-    Quantity               int
+	Machine                *Machine
+	IsNew                  bool
+	IsGroupEdit            bool
+	SelectedIds            []int
+	Shared                 groupEditShared
+	Machines               []*Machine
+	FacilityOptions        []string
+	SubLocationsByFacility map[string][]string
+	MachineStatuses        []string
+	SuccessMessage         string
+	CreatedAsset           string
+	CreatedName            string
+	Quantity               int
 }
 
 func parseIntList(values []string) []int {
-    out := make([]int, 0, len(values))
-    seen := make(map[int]bool)
-    for _, raw := range values {
-        raw = strings.TrimSpace(raw)
-        if raw == "" {
-            continue
-        }
-        id, err := strconv.Atoi(raw)
-        if err != nil {
-            continue
-        }
-        if !seen[id] {
-            seen[id] = true
-            out = append(out, id)
-        }
-    }
-    return out
+	out := make([]int, 0, len(values))
+	seen := make(map[int]bool)
+	for _, raw := range values {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		id, err := strconv.Atoi(raw)
+		if err != nil {
+			continue
+		}
+		if !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 func sharedMachineValues(machines []*Machine) groupEditShared {
-    shared := groupEditShared{}
-    if len(machines) == 0 {
-        return shared
-    }
+	shared := groupEditShared{}
+	if len(machines) == 0 {
+		return shared
+	}
 
-    first := machines[0]
-    shared.Asset = first.Asset
-    shared.Name = first.Name
-    shared.Type = first.Type
-    shared.Status = first.Status
-    shared.Condition = first.Condition
-    shared.Facility = first.Facility
-    shared.SubLocation = first.SubLocation
-    shared.Notes = first.Notes
+	first := machines[0]
+	shared.Asset = first.Asset
+	shared.Name = first.Name
+	shared.Type = first.Type
+	shared.Status = first.Status
+	shared.Condition = first.Condition
+	shared.Facility = first.Facility
+	shared.SubLocation = first.SubLocation
+	shared.Notes = first.Notes
 
-    for _, m := range machines[1:] {
-        if m.Asset != shared.Asset {
-            shared.AssetVaried = true
-            shared.Asset = ""
-        }
-        if m.Name != shared.Name {
-            shared.NameVaried = true
-            shared.Name = ""
-        }
-        if m.Type != shared.Type {
-            shared.TypeVaried = true
-            shared.Type = ""
-        }
-        if m.Status != shared.Status {
-            shared.StatusVaried = true
-            shared.Status = ""
-        }
-        if m.Condition != shared.Condition {
-            shared.ConditionVaried = true
-            shared.Condition = ""
-        }
-        if m.Facility != shared.Facility {
-            shared.FacilityVaried = true
-            shared.Facility = ""
-        }
-        if m.SubLocation != shared.SubLocation {
-            shared.SubLocationVaried = true
-            shared.SubLocation = ""
-        }
-        if m.Notes != shared.Notes {
-            shared.NotesVaried = true
-            shared.Notes = ""
-        }
-    }
+	for _, m := range machines[1:] {
+		if m.Asset != shared.Asset {
+			shared.AssetVaried = true
+			shared.Asset = ""
+		}
+		if m.Name != shared.Name {
+			shared.NameVaried = true
+			shared.Name = ""
+		}
+		if m.Type != shared.Type {
+			shared.TypeVaried = true
+			shared.Type = ""
+		}
+		if m.Status != shared.Status {
+			shared.StatusVaried = true
+			shared.Status = ""
+		}
+		if m.Condition != shared.Condition {
+			shared.ConditionVaried = true
+			shared.Condition = ""
+		}
+		if m.Facility != shared.Facility {
+			shared.FacilityVaried = true
+			shared.Facility = ""
+		}
+		if m.SubLocation != shared.SubLocation {
+			shared.SubLocationVaried = true
+			shared.SubLocation = ""
+		}
+		if m.Notes != shared.Notes {
+			shared.NotesVaried = true
+			shared.Notes = ""
+		}
+	}
 
-    return shared
+	return shared
 }
 
 func (h *Handlers) machineGroupMoveParts(w http.ResponseWriter, r *http.Request) {
-    if !h.canEdit(r) {
-        http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
-        return
-    }
-    if r.Method != http.MethodPost {
-        http.Redirect(w, r, "/", http.StatusSeeOther)
-        return
-    }
-    if err := r.ParseForm(); err != nil {
-        http.Error(w, "Invalid form submission.", http.StatusBadRequest)
-        return
-    }
+	if !h.canEdit(r) {
+		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form submission.", http.StatusBadRequest)
+		return
+	}
 
-    selectedIds := parseIntList(r.Form["selected_ids"])
-    if len(selectedIds) == 0 {
-        http.Redirect(w, r, "/", http.StatusSeeOther)
-        return
-    }
+	selectedIds := parseIntList(r.Form["selected_ids"])
+	if len(selectedIds) == 0 {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
 
-    for _, id := range selectedIds {
-        parts := h.store.PartsForMachine(id)
-        for _, p := range parts {
-            if _, errStr := h.store.EditPart(p.Id, func(pp *Part) bool {
-                pp.MachineId = 0
-                return true
-            }); errStr != "" {
-                log.Printf("machineGroupMoveParts: failed to move part %d from machine %d: %s", p.Id, id, errStr)
-            }
-        }
-    }
+	for _, id := range selectedIds {
+		parts := h.store.PartsForMachine(id)
+		for _, p := range parts {
+			if _, errStr := h.store.EditPart(p.Id, func(pp *Part) bool {
+				pp.MachineId = 0
+				return true
+			}); errStr != "" {
+				log.Printf("machineGroupMoveParts: failed to move part %d from machine %d: %s", p.Id, id, errStr)
+			}
+		}
+	}
 
-    http.Redirect(w, r, "/inventory", http.StatusSeeOther)
+	http.Redirect(w, r, "/inventory", http.StatusSeeOther)
 }

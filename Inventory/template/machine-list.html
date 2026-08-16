@@ -11,17 +11,17 @@
   </div>
   <div style="display:flex; align-items:center; gap:10px">
     <div class="view-toggle">
-      <a class="view-btn {{if ne $view "rows"}}active{{end}}" href="/?view=bubble{{if $status}}&status={{$status}}{{end}}">Bubbles</a>
-      <a class="view-btn {{if eq $view "rows"}}active{{end}}" href="/?view=rows{{if $status}}&status={{$status}}{{end}}">Rows</a>
+      <a class="view-btn {{if ne $view "rows"}}active{{end}}" href="/?view=bubble{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Bubbles</a>
+      <a class="view-btn {{if eq $view "rows"}}active{{end}}" href="/?view=rows{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Rows</a>
     </div>
     {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
   </div>
 </div>
 
 <div class="status-strip">
-  <a class="status-pill" href="/?view={{$view}}">All <span class="n">{{.Total}}</span></a>
+  <a class="status-pill" href="/?view={{$view}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">All <span class="n">{{.Total}}</span></a>
   {{range .Statuses}}
-    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}&view={{$view}}">
+    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}&view={{$view}}{{if $.Data.Sort}}&sort={{$.Data.Sort}}&dir={{$.Data.SortDir}}{{end}}">
       <span class="swatch" style="background:var(--st-accent)"></span>
       {{.}} <span class="n">{{index $.Data.Counts .}}</span>
     </a>
@@ -41,12 +41,13 @@
     <table class="parts-table machine-table">
       <thead>
         <tr>
-          <th>Asset</th>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Status</th>
-          <th>Condition</th>
-          <th>Location</th>
+          <th><a class="sort-th" href="/?sort=asset&dir={{if and (eq .Sort "asset") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Asset{{if eq .Sort "asset"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=name&dir={{if and (eq .Sort "name") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Name{{if eq .Sort "name"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=type&dir={{if and (eq .Sort "type") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Type{{if eq .Sort "type"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=status&dir={{if and (eq .Sort "status") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Status{{if eq .Sort "status"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=condition&dir={{if and (eq .Sort "condition") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Condition{{if eq .Sort "condition"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=location&dir={{if and (eq .Sort "location") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Location{{if eq .Sort "location"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -64,7 +65,11 @@
               &mdash;
             {{end}}
           </td>
+          <td>{{if .Notes}}<button type="button" class="notes-toggle" data-notes-target="notes-machine-{{.Id}}" title="Show notes">&#128172;</button>{{end}}</td>
         </tr>
+        {{if .Notes}}
+        <tr class="notes-row hidden" id="notes-machine-{{.Id}}"><td class="notes-bubble" colspan="7">{{.Notes}}</td></tr>
+        {{end}}
         {{end}}
       </tbody>
     </table>
@@ -83,7 +88,9 @@
           {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}
         </span>
         {{end}}
+        {{if .Notes}}<button type="button" class="notes-toggle" data-notes-target="notes-machine-{{.Id}}" title="Show notes">&#128172;</button>{{end}}
       </div>
+      {{if .Notes}}<div class="notes-bubble hidden" id="notes-machine-{{.Id}}">{{.Notes}}</div>{{end}}
     </a>
     {{end}}
   </div>
