@@ -80,6 +80,7 @@ var PartCategories = []string{
 	"PSU",
 	"Cooling",
 	"Case",
+	"Cabling",
 	"Network",
 	"Optical",
 	"Peripheral",

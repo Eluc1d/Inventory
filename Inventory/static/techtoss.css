@@ -200,7 +200,16 @@ main {
 
 .machine-table td a { font-weight: 600; }
 .machine-table tr.selectable-row { cursor: pointer; }
-.machine-table tr.selected { background: rgba(13, 125, 115, 0.08); }
+.machine-table tr.selected { background: rgba(var(--accent-rgb), 0.08); }
+
+.sort-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+}
+.sort-th:hover { color: var(--ink); text-decoration: none; }
+.sort-arrow { font-size: 10px; color: var(--accent); }
 
 /* ------------------------------------------------------------- tag cards */
 
@@ -343,6 +352,83 @@ main {
 .parts-table .model { font-weight: 600; }
 .parts-table .spec { color: var(--ink-soft); font-size: 13px; }
 .parts-table .qty { font-family: var(--mono); text-align: right; }
+
+/* Fixed column widths (set via <colgroup> in the template) so every column
+   lines up at the exact same position across every location/category panel
+   on the page — with the default auto layout, each <table> sizes its own
+   columns from only its own rows, so the same column would land at a
+   different width in every panel depending on what happened to be in it. */
+.parts-table.truncating { table-layout: fixed; }
+
+/* Truncate long model/spec/category/location text with an ellipsis so later
+   columns stay aligned row to row; click the row to see the full text. */
+.parts-table.truncating .model,
+.parts-table.truncating .spec,
+.parts-table.truncating .cat,
+.parts-table.truncating .loc {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+  vertical-align: bottom;
+}
+.expandable-row { cursor: pointer; }
+.expandable-row.expanded .model,
+.expandable-row.expanded .spec,
+.expandable-row.expanded .cat,
+.expandable-row.expanded .loc {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+}
+
+/* Same idea for the Workshop table/cards: clip long free-text (Name, Type)
+   with an ellipsis instead of letting it overflow into neighboring columns
+   or bubbles. Hover shows the full text via the element's title attribute. */
+.cell-truncate {
+  display: inline-block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.cell-truncate-sm { max-width: 140px; }
+
+/* Notes bubble: a small toggle button that reveals an item's Notes text. */
+.notes-toggle {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 999px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.notes-toggle:hover { border-color: var(--accent); }
+.notes-row .notes-bubble {
+  background: var(--line-2);
+  color: var(--ink-soft);
+  font-size: 13px;
+  padding: 10px 14px;
+  white-space: normal;
+}
+.tag .notes-toggle { margin-left: auto; }
+.tag .notes-bubble {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--line-2);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  white-space: normal;
+}
 
 .cond { font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
 .cond::before { content:""; width: 7px; height: 7px; border-radius: 50%; background: var(--cond-untested); }

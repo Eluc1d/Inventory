@@ -1,60 +1,162 @@
 {{template "head" .}}
 {{$editable := .Editable}}
 {{with .Data}}
+{{$groupMode := .GroupMode}}
 <div class="page-head">
   <div>
     <h1>Parts inventory</h1>
     <div class="sub">{{.Total}} loose part line{{if ne .Total 1}}s{{end}} not currently installed in a machine</div>
   </div>
   <div class="page-actions">
+    <div class="view-toggle">
+      <a class="view-btn {{if ne $groupMode "category"}}active{{end}}" href="{{.LocationHref}}">Location</a>
+      <a class="view-btn {{if eq $groupMode "category"}}active{{end}}" href="{{.CategoryHref}}">Category</a>
+    </div>
     <a href="/export/parts" class="btn btn-primary">Export</a>
     {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
   </div>
 </div>
 
-{{if .Groups}}
-  {{range .Groups}}
-  <div class="panel">
-    <div class="inv-cat">{{.Facility}} <span class="units">· {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
-    {{range .Subs}}
-    <div class="inv-subloc">{{.SubLocation}} <span class="units">· {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
-    <table class="parts-table">
-      <thead>
-        <tr><th>Category</th><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th>{{if $editable}}<th></th>{{end}}</tr>
-      </thead>
-      <tbody>
-        {{range .Parts}}
-        <tr>
-          <td><span class="cat">{{if .Category}}{{.Category}}{{else}}?{{end}}</span></td>
-          <td>
-            <div class="model">{{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</div>
-            {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
-          </td>
-          <td class="qty">{{.Quantity}}&times;</td>
-          <td><span class="cond {{lower .Condition}}">{{if .Condition}}{{.Condition}}{{else}}Untested{{end}}</span></td>
-          {{if $editable}}
-          <td style="white-space:nowrap">
-            <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
-            <form method="post" action="/part/delete" style="display:inline"
-                  onsubmit="return confirm('Delete this part?')">
-              <input type="hidden" name="id" value="{{.Id}}">
-              <button class="btn danger small" type="submit">Delete</button>
-            </form>
-          </td>
+{{if .Tags}}
+<div class="status-strip">
+  <a class="status-pill {{if not .AnyTagActive}}active{{end}}" href="{{.ClearTagsHref}}">All</a>
+  {{range .Tags}}
+    <a class="status-pill {{if .Active}}active{{end}}" href="{{.Href}}">{{.Name}} <span class="n">{{.Count}}</span></a>
+  {{end}}
+</div>
+{{end}}
+
+{{if eq $groupMode "category"}}
+  {{if .CategoryGroups}}
+    {{range .CategoryGroups}}
+    <div class="panel">
+      <div class="inv-cat">{{.Category}} <span class="units">&middot; {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
+      <table class="parts-table truncating">
+        <colgroup>
+          <col>
+          <col style="width:170px">
+          <col style="width:70px">
+          <col style="width:110px">
+          <col style="width:44px">
+          {{if $editable}}<col style="width:150px">{{end}}
+        </colgroup>
+        <thead>
+          <tr><th>Model / spec</th><th>Location</th><th style="text-align:right">Qty</th><th>Condition</th><th></th>{{if $editable}}<th></th>{{end}}</tr>
+        </thead>
+        <tbody>
+          {{range .Parts}}
+          <tr class="expandable-row" title="Click to show full text">
+            <td>
+              <div class="model">{{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</div>
+              {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
+            </td>
+            <td>
+              <span class="loc" title="{{if or .Facility .SubLocation}}{{.Facility}}{{if and .Facility .SubLocation}}, {{end}}{{.SubLocation}}{{else}}&mdash;{{end}}">
+                {{if or .Facility .SubLocation}}
+                  {{.Facility}}{{if and .Facility .SubLocation}}, {{end}}{{.SubLocation}}
+                {{else}}
+                  &mdash;
+                {{end}}
+              </span>
+            </td>
+            <td class="qty">{{.Quantity}}&times;</td>
+            <td><span class="cond {{lower .Condition}}">{{if .Condition}}{{.Condition}}{{else}}Untested{{end}}</span></td>
+            <td>{{if .Notes}}<button type="button" class="notes-toggle" data-notes-target="notes-part-{{.Id}}" title="Show notes">&#128172;</button>{{end}}</td>
+            {{if $editable}}
+            <td style="white-space:nowrap">
+              <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
+              <form method="post" action="/part/delete" style="display:inline"
+                    onsubmit="return confirm('Delete this part?')">
+                <input type="hidden" name="id" value="{{.Id}}">
+                <button class="btn danger small" type="submit">Delete</button>
+              </form>
+            </td>
+            {{end}}
+          </tr>
+          {{if .Notes}}
+          <tr class="notes-row hidden" id="notes-part-{{.Id}}"><td class="notes-bubble" colspan="{{if $editable}}6{{else}}5{{end}}">{{.Notes}}</td></tr>
           {{end}}
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
     {{end}}
+  {{else if .AnyTagActive}}
+  <div class="empty">
+    <h3>No parts match the selected tags</h3>
+    <p>Try clearing some filters.</p>
+    <a class="btn ghost" href="{{.ClearTagsHref}}">Clear filters</a>
+  </div>
+  {{else}}
+  <div class="empty">
+    <h3>No loose parts yet</h3>
+    <p>Harvested components that aren&rsquo;t installed in a machine show up here. Add one, or reassign a part from a machine to &ldquo;loose inventory&rdquo;.</p>
+    {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
   </div>
   {{end}}
 {{else}}
-<div class="empty">
-  <h3>No loose parts yet</h3>
-  <p>Harvested components that aren&rsquo;t installed in a machine show up here. Add one, or reassign a part from a machine to &ldquo;loose inventory&rdquo;.</p>
-  {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
-</div>
+  {{if .Groups}}
+    {{range .Groups}}
+    <div class="panel">
+      <div class="inv-cat">{{.Facility}} <span class="units">&middot; {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
+      {{range .Subs}}
+      <div class="inv-subloc">{{.SubLocation}} <span class="units">&middot; {{.Units}} unit{{if ne .Units 1}}s{{end}}</span></div>
+      <table class="parts-table truncating">
+        <colgroup>
+          <col style="width:130px">
+          <col>
+          <col style="width:70px">
+          <col style="width:110px">
+          <col style="width:44px">
+          {{if $editable}}<col style="width:150px">{{end}}
+        </colgroup>
+        <thead>
+          <tr><th>Category</th><th>Model / spec</th><th style="text-align:right">Qty</th><th>Condition</th><th></th>{{if $editable}}<th></th>{{end}}</tr>
+        </thead>
+        <tbody>
+          {{range .Parts}}
+          <tr class="expandable-row" title="Click to show full text">
+            <td><span class="cat">{{if .Category}}{{.Category}}{{else}}?{{end}}</span></td>
+            <td>
+              <div class="model">{{if .Model}}{{.Model}}{{else}}(unspecified){{end}}</div>
+              {{if .Spec}}<div class="spec">{{.Spec}}</div>{{end}}
+            </td>
+            <td class="qty">{{.Quantity}}&times;</td>
+            <td><span class="cond {{lower .Condition}}">{{if .Condition}}{{.Condition}}{{else}}Untested{{end}}</span></td>
+            <td>{{if .Notes}}<button type="button" class="notes-toggle" data-notes-target="notes-part-{{.Id}}" title="Show notes">&#128172;</button>{{end}}</td>
+            {{if $editable}}
+            <td style="white-space:nowrap">
+              <a class="btn ghost small" href="/part/edit?id={{.Id}}">Edit</a>
+              <form method="post" action="/part/delete" style="display:inline"
+                    onsubmit="return confirm('Delete this part?')">
+                <input type="hidden" name="id" value="{{.Id}}">
+                <button class="btn danger small" type="submit">Delete</button>
+              </form>
+            </td>
+            {{end}}
+          </tr>
+          {{if .Notes}}
+          <tr class="notes-row hidden" id="notes-part-{{.Id}}"><td class="notes-bubble" colspan="{{if $editable}}6{{else}}5{{end}}">{{.Notes}}</td></tr>
+          {{end}}
+          {{end}}
+        </tbody>
+      </table>
+      {{end}}
+    </div>
+    {{end}}
+  {{else if .AnyTagActive}}
+  <div class="empty">
+    <h3>No parts match the selected tags</h3>
+    <p>Try clearing some filters.</p>
+    <a class="btn ghost" href="{{.ClearTagsHref}}">Clear filters</a>
+  </div>
+  {{else}}
+  <div class="empty">
+    <h3>No loose parts yet</h3>
+    <p>Harvested components that aren&rsquo;t installed in a machine show up here. Add one, or reassign a part from a machine to &ldquo;loose inventory&rdquo;.</p>
+    {{if $editable}}<a class="btn" href="/part/edit?id=new">+ Add loose part</a>{{end}}
+  </div>
+  {{end}}
 {{end}}
 {{end}}
 {{template "foot" .}}

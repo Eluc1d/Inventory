@@ -124,6 +124,24 @@
     }
   });
 })();
+
+// Notes-bubble toggle and truncated-text row expansion — delegated so it
+// works on any page containing these classes, no per-page script needed.
+document.addEventListener('click', function (event) {
+  var toggle = event.target.closest('.notes-toggle');
+  if (toggle) {
+    event.preventDefault();
+    event.stopPropagation();
+    var targetId = toggle.getAttribute('data-notes-target');
+    var target = targetId && document.getElementById(targetId);
+    if (target) target.classList.toggle('hidden');
+    return;
+  }
+  var row = event.target.closest('.expandable-row');
+  if (row && !event.target.closest('a, button, form, input, select, textarea, summary')) {
+    row.classList.toggle('expanded');
+  }
+});
 </script>
 </body>
 </html>
