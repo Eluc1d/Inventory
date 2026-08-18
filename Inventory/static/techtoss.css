@@ -499,6 +499,19 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   background: var(--panel);
 }
 .searchbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15); }
+.searchbar-with-scope { display: flex; gap: 10px; align-items: stretch; }
+.searchbar-with-scope input { flex: 1 1 auto; }
+#searchScope {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 14px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+}
+#searchScope:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15); }
 /* Mirrors .live-row's grid exactly so each label sits directly above its column. */
 .live-header {
   display: grid;

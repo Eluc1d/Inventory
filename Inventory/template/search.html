@@ -5,11 +5,20 @@
   </div>
 </div>
 
-<div class="searchbar">
+{{with .Data}}
+<div class="searchbar searchbar-with-scope">
   <input id="searchInput" type="search" autocomplete="off" autofocus
          placeholder="Search machines and parts…"
-         value="{{with .Data}}{{.Query}}{{end}}">
+         value="{{.Query}}">
+  <select id="searchScope">
+    <option value="" {{if eq .Scope ""}}selected{{end}}>All types</option>
+    <option value="machine" {{if eq .Scope "machine"}}selected{{end}}>Machines</option>
+    {{range .CategoryScopes}}
+    <option value="{{.}}" {{if eq . $.Data.Scope}}selected{{end}}>{{.}}</option>
+    {{end}}
+  </select>
 </div>
+{{end}}
 <div class="live-header hidden" id="liveHeader">
   <button type="button" class="sort-th" data-sort="kind">Kind</button>
   <button type="button" class="sort-th" data-sort="title">Name</button>

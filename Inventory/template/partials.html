@@ -34,6 +34,7 @@
   if (!input) return;
   var box = document.getElementById('liveResults');
   var header = document.getElementById('liveHeader');
+  var scopeSelect = document.getElementById('searchScope');
   var timer = null;
   var last = { query: '', rows: [], recent: false };
   var sortKey = null;
@@ -104,7 +105,8 @@
 
   function run() {
     var q = input.value.trim();
-    fetch('/api/live?q=' + encodeURIComponent(q))
+    var scope = scopeSelect ? scopeSelect.value : '';
+    fetch('/api/live?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(scope))
       .then(function (r) { return r.json(); })
       .then(render)
       .catch(function () {});
@@ -113,6 +115,9 @@
     clearTimeout(timer);
     timer = setTimeout(run, 120);
   });
+  if (scopeSelect) {
+    scopeSelect.addEventListener('change', run);
+  }
 
   if (header) {
     header.querySelectorAll('.sort-th').forEach(function (btn) {
