@@ -33,32 +33,80 @@
   var input = document.getElementById('searchInput');
   if (!input) return;
   var box = document.getElementById('liveResults');
+  var header = document.getElementById('liveHeader');
+  var scopeSelect = document.getElementById('searchScope');
   var timer = null;
+  var last = { query: '', rows: [], recent: false };
+  var sortKey = null;
+  var sortDir = 'asc';
 
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
-  function render(data) {
-    if (!data.query) { box.innerHTML = ''; box.classList.add('hidden'); return; }
-    if (!data.rows.length) {
-      box.innerHTML = '<div class="live-empty">No machines or parts match &ldquo;' + esc(data.query) + '&rdquo;.</div>';
-      box.classList.remove('hidden');
-      return;
-    }
-    box.innerHTML = data.rows.map(function (r) {
-      return '<a class="live-row" href="' + r.href + '">' + row(r) + '</a>';
-    }).join('');
+  // Sorting happens entirely client-side, over whatever rows the last fetch
+  // returned — no need to re-hit the server just to reorder what's already
+  // on screen.
+  function sortedRows() {
+    if (!sortKey) return last.rows;
+    var rows = last.rows.slice();
+    rows.sort(function (a, b) {
+      var av = (a[sortKey] || '').toLowerCase();
+      var bv = (b[sortKey] || '').toLowerCase();
+      var cmp = av < bv ? -1 : (av > bv ? 1 : 0);
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+    return rows;
   }
+
+  function renderHeader() {
+    if (!header) return;
+    if (!last.rows.length) { header.classList.add('hidden'); return; }
+    header.classList.remove('hidden');
+    header.querySelectorAll('.sort-th').forEach(function (btn) {
+      var arrow = btn.querySelector('.sort-arrow');
+      if (arrow) arrow.remove();
+      if (btn.getAttribute('data-sort') === sortKey) {
+        btn.insertAdjacentHTML('beforeend',
+          '<span class="sort-arrow">' + (sortDir === 'asc' ? '&uarr;' : '&darr;') + '</span>');
+      }
+    });
+  }
+
+  function renderRows() {
+    var rows = sortedRows();
+    if (!rows.length) {
+      var msg = last.query
+        ? 'No machines or parts match &ldquo;' + esc(last.query) + '&rdquo;.'
+        : 'Nothing tracked yet.';
+      box.innerHTML = '<div class="live-empty">' + msg + '</div>';
+      box.classList.remove('hidden');
+    } else {
+      var heading = (!last.query && last.recent) ? '<div class="live-heading">Recently added</div>' : '';
+      box.innerHTML = heading + rows.map(function (r) {
+        return '<a class="live-row" href="' + r.href + '">' + row(r) + '</a>';
+      }).join('');
+      box.classList.remove('hidden');
+    }
+    renderHeader();
+  }
+
   function row(r){
     return '<span class="kind ' + r.kind + '">' + r.kind + '</span>' +
-      '<span class="lr-title">' + esc(r.title || '(untitled)') + '</span>' +
+      '<span class="lr-title cell-truncate" title="' + esc(r.title || '(untitled)') + '">' + esc(r.title || '(untitled)') + '</span>' +
       '<span class="lr-sub">' + esc(r.subtitle) + '</span>' +
+      (r.location ? '<span class="lr-loc" title="' + esc(r.location) + '">' + esc(r.location) + '</span>' : '') +
       (r.badge ? '<span class="lr-badge">' + esc(r.badge) + '</span>' : '');
+  }
+
+  function render(data) {
+    last = data;
+    renderRows();
   }
 
   function run() {
     var q = input.value.trim();
-    fetch('/api/live?q=' + encodeURIComponent(q))
+    var scope = scopeSelect ? scopeSelect.value : '';
+    fetch('/api/live?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(scope))
       .then(function (r) { return r.json(); })
       .then(render)
       .catch(function () {});
@@ -67,7 +115,28 @@
     clearTimeout(timer);
     timer = setTimeout(run, 120);
   });
-  if (input.value.trim()) run();
+  if (scopeSelect) {
+    scopeSelect.addEventListener('change', run);
+  }
+
+  if (header) {
+    header.querySelectorAll('.sort-th').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-sort');
+        if (sortKey === key) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortKey = key;
+          sortDir = 'asc';
+        }
+        renderRows();
+      });
+    });
+  }
+
+  // Always show something on load: recently-added items when idle, or
+  // matching results if the page loaded with a ?q= already filled in.
+  run();
 })();
 
 (function () {
@@ -80,17 +149,19 @@
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
   function render(data) {
-    if (!data.query) { box.innerHTML = ''; box.classList.add('hidden'); return; }
     if (!data.rows.length) {
-      box.innerHTML = '<div class="live-empty">No results for &ldquo;' + esc(data.query) + '&rdquo;.</div>';
+      var msg = data.query ? 'No results for &ldquo;' + esc(data.query) + '&rdquo;.' : 'Nothing tracked yet.';
+      box.innerHTML = '<div class="live-empty">' + msg + '</div>';
       box.classList.remove('hidden');
       return;
     }
-    box.innerHTML = data.rows.map(function (r) {
+    var heading = (!data.query && data.recent) ? '<div class="live-heading">Recently added</div>' : '';
+    box.innerHTML = heading + data.rows.map(function (r) {
       return '<button type="button" class="dropdown-option" data-href="' + r.href + '">' +
         '<span class="kind ' + r.kind + '">' + esc(r.kind) + '</span>' +
-        '<span class="lr-title">' + esc(r.title || '(untitled)') + '</span>' +
+        '<span class="lr-title" title="' + esc(r.title || '(untitled)') + '">' + esc(r.title || '(untitled)') + '</span>' +
         '<span class="lr-sub">' + esc(r.subtitle) + '</span>' +
+        (r.location ? '<span class="lr-loc" title="' + esc(r.location) + '">' + esc(r.location) + '</span>' : '') +
         (r.badge ? '<span class="lr-badge">' + esc(r.badge) + '</span>' : '') +
       '</button>';
     }).join('');
@@ -99,7 +170,6 @@
 
   function run() {
     var q = input.value.trim();
-    if (!q) { render({query:'', rows:[]}); return; }
     fetch('/api/live?q=' + encodeURIComponent(q))
       .then(function (r) { return r.json(); })
       .then(render)

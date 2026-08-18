@@ -2,14 +2,29 @@
 <div class="page-head">
   <div>
     <h1>Search</h1>
-    <div class="sub">Machines and parts — try &ldquo;RTX&rdquo;, &ldquo;16GB DDR4&rdquo;, &ldquo;faulty psu&rdquo;, or a status.</div>
   </div>
 </div>
 
-<div class="searchbar">
+{{with .Data}}
+<div class="searchbar searchbar-with-scope">
   <input id="searchInput" type="search" autocomplete="off" autofocus
          placeholder="Search machines and parts…"
-         value="{{with .Data}}{{.Query}}{{end}}">
+         value="{{.Query}}">
+  <select id="searchScope">
+    <option value="" {{if eq .Scope ""}}selected{{end}}>All types</option>
+    <option value="machine" {{if eq .Scope "machine"}}selected{{end}}>Machines</option>
+    {{range .CategoryScopes}}
+    <option value="{{.}}" {{if eq . $.Data.Scope}}selected{{end}}>{{.}}</option>
+    {{end}}
+  </select>
+</div>
+{{end}}
+<div class="live-header hidden" id="liveHeader">
+  <button type="button" class="sort-th" data-sort="kind">Kind</button>
+  <button type="button" class="sort-th" data-sort="title">Name</button>
+  <button type="button" class="sort-th" data-sort="subtitle">Details</button>
+  <button type="button" class="sort-th" data-sort="location">Location</button>
+  <button type="button" class="sort-th" data-sort="badge">Status</button>
 </div>
 <div class="live-results" id="liveResults"></div>
 
@@ -31,6 +46,7 @@
         <span class="lr-sub">
           {{.Machine.Asset}}{{if and .Machine.Asset .Machine.Type}} · {{end}}{{.Machine.Type}}
         </span>
+        <span class="lr-loc">{{if or .Machine.Facility .Machine.SubLocation}}{{.Machine.Facility}}{{if and .Machine.Facility .Machine.SubLocation}}, {{end}}{{.Machine.SubLocation}}{{else}}Unassigned{{end}}</span>
         <span class="lr-badge">{{.Machine.Status}}</span>
       </a>
       {{else}}
@@ -38,6 +54,7 @@
         <span class="kind part">part</span>
         <span class="lr-title">{{.Part.Model}}</span>
         <span class="lr-sub">{{.Part.Category}}</span>
+        <span class="lr-loc">{{if .Part.MachineId}}Installed{{else}}{{if or .Part.Facility .Part.SubLocation}}{{.Part.Facility}}{{if and .Part.Facility .Part.SubLocation}}, {{end}}{{.Part.SubLocation}}{{else}}Unassigned{{end}}{{end}}</span>
         <span class="lr-badge">{{.Part.Condition}}</span>
       </a>
       {{end}}

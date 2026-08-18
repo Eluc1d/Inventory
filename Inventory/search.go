@@ -38,7 +38,7 @@ func (s *Search) UpdateMachine(m *Machine) {
 
 func (s *Search) UpdatePart(p *Part) {
 	hay := normalize(strings.Join([]string{
-		p.Category, p.Model, p.Spec, p.Condition, p.Serial, p.Notes,
+		p.Category, p.Model, p.Spec, p.Condition, p.Serial, p.Notes, p.Facility, p.SubLocation,
 	}, " "))
 	s.mu.Lock()
 	s.parts[p.Id] = hay
