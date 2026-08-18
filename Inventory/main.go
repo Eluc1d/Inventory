@@ -31,6 +31,8 @@ func parseEditNets(spec string) []*net.IPNet {
 }
 
 func main() {
+	version = detectVersion()
+
 	bindAddress := flag.String("bind-address", ":2000", "Listen address:port")
 	dbFile := flag.String("dbfile", "techtoss.db", "SQLite database file")
 	templateDir := flag.String("templatedir", "./template", "Directory with HTML templates")

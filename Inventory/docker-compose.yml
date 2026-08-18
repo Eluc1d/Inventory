@@ -8,6 +8,11 @@ services:
       - "2000:2000"
     volumes:
       - .:/app
+      # Read-only access to the repo's real .git so the app can shell out to
+      # `git describe` at startup and show a real version in the topbar. This
+      # only lives one level above the build context (Inventory/), which is
+      # the git working tree root.
+      - ../.git:/app/.git:ro
     develop:
       watch:
         - action: sync
