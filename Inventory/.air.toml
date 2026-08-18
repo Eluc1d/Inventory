@@ -2,7 +2,12 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go build -o ./techtoss ."
+  # -buildvcs=false: skip Go's own automatic VCS stamping. The bind-mounted
+  # .git (see docker-compose.yml) is only there for version.go's own
+  # `git describe` call; Go's built-in stamping runs `git status` too, which
+  # can fail (exit 128) on hosts where the mounted .git's owning UID doesn't
+  # match the container user ("dubious ownership"), aborting the build.
+  cmd = "go build -buildvcs=false -o ./techtoss ."
   bin = "./techtoss"
   include_ext = ["go", "html", "tpl", "tmpl"]
   exclude_ext = ["sql", "sqlite", "db"]
