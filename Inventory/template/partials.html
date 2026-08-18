@@ -6,7 +6,7 @@
 <title>{{.Title}} · TechToss</title>
 <link rel="stylesheet" href="/static/techtoss.css">
 </head>
-<body>
+<body data-editable="{{if .Editable}}1{{end}}">
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="/"><img src="/static/logo.png" alt="TechToss"></a>
@@ -20,6 +20,20 @@
              placeholder="Type to search..." aria-label="Topbar search">
       <div id="topbarSearchOptions" class="dropdown-options hidden"></div>
     </div>
+    <div class="hotkey-help">
+      <button type="button" id="hotkeyHelpButton" class="hotkey-help-btn"
+              aria-label="Keyboard shortcuts" aria-expanded="false" title="Keyboard shortcuts (?)">?</button>
+      <div id="hotkeyHelpPanel" class="hotkey-help-panel hidden" role="dialog" aria-label="Keyboard shortcuts">
+        <div class="hotkey-help-heading">Keyboard shortcuts</div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>1</kbd></span><span class="hotkey-desc">Go to Machines</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>2</kbd></span><span class="hotkey-desc">Go to Parts inventory</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>3</kbd></span><span class="hotkey-desc">Go to Search</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>/</kbd></span><span class="hotkey-desc">Focus the search box</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>Shift</kbd>+<kbd>=</kbd></span><span class="hotkey-desc">Create a new machine</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>?</kbd></span><span class="hotkey-desc">Toggle this panel</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>Esc</kbd></span><span class="hotkey-desc">Close this panel, or unfocus search</span></div>
+      </div>
+    </div>
   </div>
 </header>
 <main>
@@ -28,6 +42,103 @@
 {{define "foot"}}
 </main>
 <script>
+// Keyboard shortcuts — delegated on document so they work on every page,
+// regardless of which search box (if any) is present. The "?" button next to
+// the topbar search lists these for discoverability; keep that list in sync
+// with the branches below when adding new ones.
+(function () {
+  var helpButton = document.getElementById('hotkeyHelpButton');
+  var helpPanel = document.getElementById('hotkeyHelpPanel');
+
+  function openHelp() {
+    if (!helpPanel) return;
+    helpPanel.classList.remove('hidden');
+    if (helpButton) helpButton.setAttribute('aria-expanded', 'true');
+  }
+  function closeHelp() {
+    if (!helpPanel) return;
+    helpPanel.classList.add('hidden');
+    if (helpButton) helpButton.setAttribute('aria-expanded', 'false');
+  }
+  function toggleHelp() {
+    if (!helpPanel) return;
+    if (helpPanel.classList.contains('hidden')) openHelp(); else closeHelp();
+  }
+
+  if (helpButton) {
+    helpButton.addEventListener('click', function (event) {
+      event.stopPropagation();
+      toggleHelp();
+    });
+  }
+  document.addEventListener('click', function (event) {
+    if (helpPanel && !helpPanel.classList.contains('hidden') && !event.target.closest('.hotkey-help')) {
+      closeHelp();
+    }
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    var target = event.target;
+    var tag = (target.tagName || '').toLowerCase();
+    var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+
+    // 1/2/3 jump between the app's three top-level pages.
+    var navTargets = { '1': '/', '2': '/inventory', '3': '/search' };
+    if (navTargets.hasOwnProperty(event.key) && !typing) {
+      event.preventDefault();
+      var dest = navTargets[event.key];
+      if (window.location.pathname !== dest) {
+        window.location.href = dest;
+      }
+      return;
+    }
+
+    // "/" jumps to search: the page's own search box on the Search page,
+    // otherwise the topbar search present on every page.
+    if (event.key === '/' && !typing) {
+      var box = document.getElementById('searchInput') || document.getElementById('topbarSearch');
+      if (box) {
+        event.preventDefault();
+        box.focus();
+        box.select();
+      }
+      return;
+    }
+
+    // "?" toggles the shortcuts help panel.
+    if (event.key === '?' && !typing) {
+      event.preventDefault();
+      toggleHelp();
+      return;
+    }
+
+    // Shift+= ("+") creates a new machine — same destination as the
+    // "+ Log machine" button, which is only ever rendered when editable.
+    if (event.shiftKey && event.key === '+' && !typing) {
+      if (document.body.dataset.editable === '1') {
+        event.preventDefault();
+        window.location.href = '/machine/edit?id=new';
+      }
+      return;
+    }
+
+    // Escape closes the help panel if it's open, else unfocuses an active
+    // search box (mirrors the click-outside-closes behavior elsewhere).
+    if (event.key === 'Escape') {
+      if (helpPanel && !helpPanel.classList.contains('hidden')) {
+        closeHelp();
+        return;
+      }
+      var active = document.activeElement;
+      if (active && (active.id === 'searchInput' || active.id === 'topbarSearch')) {
+        active.blur();
+      }
+    }
+  });
+})();
+
 // Live search-as-you-type. Runs only if the search input is present.
 (function () {
   var input = document.getElementById('searchInput');
