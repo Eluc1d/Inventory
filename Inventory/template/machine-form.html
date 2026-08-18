@@ -167,6 +167,18 @@
   </script>
 
   <div class="field">
+    <label for="client_tag">Client / Group tag</label>
+    <input id="client_tag" name="client_tag"
+           value="{{if $data.IsGroupEdit}}{{$data.Shared.ClientTag}}{{else}}{{$m.ClientTag}}{{end}}"
+           list="clientTagList"
+           placeholder="{{if and $data.IsGroupEdit $data.Shared.ClientTagVaried}}Varied{{else}}e.g. Smith Family Order{{end}}">
+    <datalist id="clientTagList">
+      {{range $data.ClientTags}}<option value="{{.}}"></option>{{end}}
+    </datalist>
+    {{if $data.IsGroupEdit}}<div class="hint">Tag all selected machines with the same client/order label to group them together.</div>{{end}}
+  </div>
+
+  <div class="field">
     <label for="notes">Notes</label>
     <textarea id="notes" name="notes" placeholder="{{if and $data.IsGroupEdit $data.Shared.NotesVaried}}Varied{{end}}">{{if $data.IsGroupEdit}}{{$data.Shared.Notes}}{{else}}{{$m.Notes}}{{end}}</textarea>
   </div>

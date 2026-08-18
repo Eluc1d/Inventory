@@ -90,8 +90,29 @@ type dashboardData struct {
 	Total        int
 	View         string // "bubble" | "rows"
 	StatusFilter string
-	Sort         string // "" | "asset" | "name" | "type" | "status" | "condition" | "location"
-	SortDir      string // "asc" | "desc"
+	Sort         string   // "" | "asset" | "name" | "type" | "status" | "condition" | "location"
+	SortDir      string   // "asc" | "desc"
+	ClientTag    string   // current client/group tag filter, "" = none
+	ClientTags   []string // distinct tags in use, for the filter chip row
+}
+
+// distinctClientTags returns the sorted set of non-empty client/group tags
+// currently in use, for the Workshop filter chips and the form's datalist of
+// existing tags (so operators reuse "Smith Family Order" instead of retyping
+// slight variations of it).
+func distinctClientTags(machines []*Machine) []string {
+	set := map[string]bool{}
+	for _, m := range machines {
+		if m.ClientTag != "" {
+			set[m.ClientTag] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for t := range set {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // machineSortKeys maps a Workshop column-sort key to the string it sorts on.
@@ -112,6 +133,7 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	machines := h.store.AllMachines()
 	filter := r.URL.Query().Get("status")
+	clientTag := r.URL.Query().Get("client_tag")
 	view := r.URL.Query().Get("view")
 	if view != "rows" {
 		view = "bubble"
@@ -126,6 +148,9 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 	for _, m := range machines {
 		counts[m.Status]++
 	}
+	// Chip lists reflect the full unfiltered set so they don't shift around as
+	// the other facet (status/client tag) narrows the view.
+	clientTags := distinctClientTags(machines)
 
 	shown := machines
 	if filter != "" {
@@ -135,6 +160,15 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 				shown = append(shown, m)
 			}
 		}
+	}
+	if clientTag != "" {
+		tagged := make([]*Machine, 0, len(shown))
+		for _, m := range shown {
+			if m.ClientTag == clientTag {
+				tagged = append(tagged, m)
+			}
+		}
+		shown = tagged
 	}
 
 	if keyFn, ok := machineSortKeys[sortCol]; ok {
@@ -171,6 +205,8 @@ func (h *Handlers) dashboard(w http.ResponseWriter, r *http.Request) {
 		StatusFilter: filter,
 		Sort:         sortCol,
 		SortDir:      sortDir,
+		ClientTag:    clientTag,
+		ClientTags:   clientTags,
 	}
 	h.tmpl.Render(w, http.StatusOK, "machine-list.html", &page{
 		Title:    "Workbench",
@@ -224,6 +260,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 		facility := strings.TrimSpace(r.FormValue("facility"))
 		subLocation := strings.TrimSpace(r.FormValue("sub_location"))
 		notes := strings.TrimSpace(r.FormValue("notes"))
+		clientTag := strings.TrimSpace(r.FormValue("client_tag"))
 		stay := r.FormValue("stay") == "1"
 
 		if isNew {
@@ -236,6 +273,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 				m.Facility = facility
 				m.SubLocation = subLocation
 				m.Notes = notes
+				m.ClientTag = clientTag
 				return true
 			})
 			if m == nil {
@@ -255,6 +293,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 						FacilityOptions:        FacilityOptions,
 						SubLocationsByFacility: SubLocationsByFacility,
 						MachineStatuses:        MachineStatuses,
+						ClientTags:             distinctClientTags(h.store.AllMachines()),
 					},
 				})
 				return
@@ -274,6 +313,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			m.Facility = facility
 			m.SubLocation = subLocation
 			m.Notes = notes
+			m.ClientTag = clientTag
 			return true
 		}); !ok {
 			http.Error(w, errStr, http.StatusBadRequest)
@@ -306,6 +346,7 @@ func (h *Handlers) machineEdit(w http.ResponseWriter, r *http.Request) {
 			FacilityOptions:        FacilityOptions,
 			SubLocationsByFacility: SubLocationsByFacility,
 			MachineStatuses:        MachineStatuses,
+			ClientTags:             distinctClientTags(h.store.AllMachines()),
 		},
 	})
 }
@@ -454,6 +495,7 @@ func (h *Handlers) machineGroupEdit(w http.ResponseWriter, r *http.Request) {
 		facility := strings.TrimSpace(r.FormValue("facility"))
 		subLocation := strings.TrimSpace(r.FormValue("sub_location"))
 		notes := strings.TrimSpace(r.FormValue("notes"))
+		clientTag := strings.TrimSpace(r.FormValue("client_tag"))
 
 		for _, id := range selectedIds {
 			if _, errStr := h.store.EditMachine(id, func(m *Machine) bool {
@@ -477,6 +519,9 @@ func (h *Handlers) machineGroupEdit(w http.ResponseWriter, r *http.Request) {
 				}
 				if notes != "" {
 					m.Notes = notes
+				}
+				if clientTag != "" {
+					m.ClientTag = clientTag
 				}
 				return true
 			}); errStr != "" {
@@ -518,6 +563,7 @@ func (h *Handlers) machineGroupEdit(w http.ResponseWriter, r *http.Request) {
 			FacilityOptions:        FacilityOptions,
 			SubLocationsByFacility: SubLocationsByFacility,
 			MachineStatuses:        MachineStatuses,
+			ClientTags:             distinctClientTags(h.store.AllMachines()),
 		},
 	})
 }
@@ -1056,6 +1102,8 @@ type groupEditShared struct {
 	SubLocationVaried bool
 	Notes             string
 	NotesVaried       bool
+	ClientTag         string
+	ClientTagVaried   bool
 }
 
 type machineFormData struct {
@@ -1068,6 +1116,7 @@ type machineFormData struct {
 	FacilityOptions        []string
 	SubLocationsByFacility map[string][]string
 	MachineStatuses        []string
+	ClientTags             []string // distinct client/group tags in use, for the datalist
 	SuccessMessage         string
 	CreatedAsset           string
 	CreatedName            string
@@ -1109,6 +1158,7 @@ func sharedMachineValues(machines []*Machine) groupEditShared {
 	shared.Facility = first.Facility
 	shared.SubLocation = first.SubLocation
 	shared.Notes = first.Notes
+	shared.ClientTag = first.ClientTag
 
 	for _, m := range machines[1:] {
 		if m.Asset != shared.Asset {
@@ -1142,6 +1192,10 @@ func sharedMachineValues(machines []*Machine) groupEditShared {
 		if m.Notes != shared.Notes {
 			shared.NotesVaried = true
 			shared.Notes = ""
+		}
+		if m.ClientTag != shared.ClientTag {
+			shared.ClientTagVaried = true
+			shared.ClientTag = ""
 		}
 	}
 

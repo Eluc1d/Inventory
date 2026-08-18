@@ -14,6 +14,7 @@ type Machine struct {
 	Facility    string    `json:"facility"`
 	SubLocation string    `json:"sub_location"`
 	Notes       string    `json:"notes,omitempty"`
+	ClientTag   string    `json:"client_tag,omitempty"` // free-text label grouping machines built for the same client/order
 	Created     time.Time `json:"created,omitempty"`
 	Updated     time.Time `json:"updated,omitempty"`
 

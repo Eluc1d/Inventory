@@ -3,6 +3,7 @@
 {{with .Data}}
 {{$view := .View}}
 {{$status := .StatusFilter}}
+{{$tag := .ClientTag}}
 
 <div class="page-head">
   <div>
@@ -11,8 +12,8 @@
   </div>
   <div class="page-actions">
     <div class="view-toggle">
-      <a class="view-btn {{if ne $view "rows"}}active{{end}}" href="/?view=bubble{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Bubbles</a>
-      <a class="view-btn {{if eq $view "rows"}}active{{end}}" href="/?view=rows{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Rows</a>
+      <a class="view-btn {{if ne $view "rows"}}active{{end}}" href="/?view=bubble{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Bubbles</a>
+      <a class="view-btn {{if eq $view "rows"}}active{{end}}" href="/?view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">Rows</a>
     </div>
     <a href="/export/machines" class="btn btn-primary">Export</a>
     {{if $editable}}<a class="btn" href="/machine/edit?id=new">+ Log machine</a>{{end}}
@@ -20,14 +21,23 @@
 </div>
 
 <div class="status-strip">
-  <a class="status-pill" href="/?view={{$view}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">All <span class="n">{{.Total}}</span></a>
+  <a class="status-pill" href="/?view={{$view}}{{if $tag}}&client_tag={{$tag}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">All <span class="n">{{.Total}}</span></a>
   {{range .Statuses}}
-    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}&view={{$view}}{{if $.Data.Sort}}&sort={{$.Data.Sort}}&dir={{$.Data.SortDir}}{{end}}">
+    <a class="status-pill s-{{statusSlug .}}" href="/?status={{.}}&view={{$view}}{{if $tag}}&client_tag={{$tag}}{{end}}{{if $.Data.Sort}}&sort={{$.Data.Sort}}&dir={{$.Data.SortDir}}{{end}}">
       <span class="swatch" style="background:var(--st-accent)"></span>
       {{.}} <span class="n">{{index $.Data.Counts .}}</span>
     </a>
   {{end}}
 </div>
+
+{{if .ClientTags}}
+<div class="status-strip">
+  <a class="status-pill client-tag-pill {{if not $tag}}active{{end}}" href="/?view={{$view}}{{if $status}}&status={{$status}}{{end}}{{if .Sort}}&sort={{.Sort}}&dir={{.SortDir}}{{end}}">All clients</a>
+  {{range .ClientTags}}
+    <a class="status-pill client-tag-pill {{if eq . $tag}}active{{end}}" href="/?client_tag={{.}}&view={{$view}}{{if $status}}&status={{$status}}{{end}}{{if $.Data.Sort}}&sort={{$.Data.Sort}}&dir={{$.Data.SortDir}}{{end}}">{{.}}</a>
+  {{end}}
+</div>
+{{end}}
 
 <div class="selection-toolbar hidden" id="selectionToolbar">
   <div class="selected-summary">
@@ -42,12 +52,12 @@
     <table class="parts-table machine-table">
       <thead>
         <tr>
-          <th><a class="sort-th" href="/?sort=asset&dir={{if and (eq .Sort "asset") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Asset{{if eq .Sort "asset"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
-          <th><a class="sort-th" href="/?sort=name&dir={{if and (eq .Sort "name") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Name{{if eq .Sort "name"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
-          <th><a class="sort-th" href="/?sort=type&dir={{if and (eq .Sort "type") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Type{{if eq .Sort "type"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
-          <th><a class="sort-th" href="/?sort=status&dir={{if and (eq .Sort "status") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Status{{if eq .Sort "status"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
-          <th><a class="sort-th" href="/?sort=condition&dir={{if and (eq .Sort "condition") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Condition{{if eq .Sort "condition"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
-          <th><a class="sort-th" href="/?sort=location&dir={{if and (eq .Sort "location") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}">Location{{if eq .Sort "location"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=asset&dir={{if and (eq .Sort "asset") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}">Asset{{if eq .Sort "asset"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=name&dir={{if and (eq .Sort "name") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}">Name{{if eq .Sort "name"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=type&dir={{if and (eq .Sort "type") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}">Type{{if eq .Sort "type"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=status&dir={{if and (eq .Sort "status") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}">Status{{if eq .Sort "status"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=condition&dir={{if and (eq .Sort "condition") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}">Condition{{if eq .Sort "condition"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
+          <th><a class="sort-th" href="/?sort=location&dir={{if and (eq .Sort "location") (eq .SortDir "asc")}}desc{{else}}asc{{end}}&view=rows{{if $status}}&status={{$status}}{{end}}{{if $tag}}&client_tag={{$tag}}{{end}}">Location{{if eq .Sort "location"}}<span class="sort-arrow">{{if eq .SortDir "asc"}}&uarr;{{else}}&darr;{{end}}</span>{{end}}</a></th>
           <th></th>
         </tr>
       </thead>
@@ -55,7 +65,10 @@
         {{range .Machines}}
         <tr class="selectable-machine selectable-row" data-machine-id="{{.Id}}">
           <td class="mono">{{.Asset}}</td>
-          <td><a class="cell-truncate" title="{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}" href="/machine?id={{.Id}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</a></td>
+          <td>
+            <a class="cell-truncate" title="{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}" href="/machine?id={{.Id}}">{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</a>
+            {{if .ClientTag}}<div class="client-tag-badge cell-truncate-sm" title="{{.ClientTag}}">{{.ClientTag}}</div>{{end}}
+          </td>
           <td>{{if .Type}}<span class="cell-truncate cell-truncate-sm" title="{{.Type}}">{{.Type}}</span>{{else}}&mdash;{{end}}</td>
           <td><span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span></td>
           <td>{{if .Condition}}{{.Condition}}{{else}}&mdash;{{end}}</td>
@@ -84,6 +97,7 @@
       <div class="meta">
         {{if .Type}}<span class="type cell-truncate cell-truncate-sm" title="{{.Type}}">{{.Type}}</span>{{end}}
         <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
+        {{if .ClientTag}}<span class="client-tag-badge cell-truncate-sm" title="{{.ClientTag}}">{{.ClientTag}}</span>{{end}}
         {{if or .Facility .SubLocation}}
         <span>
           {{if .Facility}}{{.Facility}}{{end}}{{if and .Facility .SubLocation}}, {{end}}{{if .SubLocation}}{{.SubLocation}}{{end}}

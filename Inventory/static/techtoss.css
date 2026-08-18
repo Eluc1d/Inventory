@@ -178,6 +178,29 @@ main {
 .status-pill .n { font-family: var(--mono); font-weight: 700; color: var(--ink); }
 .status-pill .swatch { width: 9px; height: 9px; border-radius: 2px; }
 
+/* client/group tag filter chips reuse .status-pill's shape but lean on the
+   reserved magenta accent, so the "who this is for" facet reads as visually
+   distinct from the status workflow facet. */
+.client-tag-pill:hover { border-color: var(--pink); }
+.client-tag-pill.active { border-color: var(--pink); color: var(--pink); }
+
+/* client/group tag badge shown on machine rows/cards — same magenta accent as
+   the filter chips above, kept small and pill-shaped so it doesn't compete
+   with the (larger, colorful) status chip next to it. */
+.client-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--pink);
+  background: rgba(var(--pink-rgb), .1);
+  border: 1px solid rgba(var(--pink-rgb), .28);
+  white-space: nowrap;
+}
+.machine-table .client-tag-badge { margin-top: 3px; }
+
 /* -------------------------------------------------------------- view toggle */
 
 .view-toggle {
