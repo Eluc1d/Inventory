@@ -105,6 +105,11 @@ func ensureMachineColumns(db *sql.DB) error {
 		return err
 	}
 
+	_, err = db.Exec(`ALTER TABLE machine ADD COLUMN client_tag varchar(120)`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
 	return nil
 }
 
@@ -139,11 +144,11 @@ func ensurePartColumns(db *sql.DB) error {
 
 func scanMachine(rows *sql.Rows) (*Machine, error) {
 	var (
-		id                                                  int
-		asset, name, typ, status, cond, fac, sub_loc, notes *string
-		created, updated                                    *time.Time
+		id                                                             int
+		asset, name, typ, status, cond, fac, sub_loc, notes, clientTag *string
+		created, updated                                               *time.Time
 	)
-	err := rows.Scan(&id, &asset, &name, &typ, &status, &cond, &fac, &sub_loc, &notes, &created, &updated)
+	err := rows.Scan(&id, &asset, &name, &typ, &status, &cond, &fac, &sub_loc, &notes, &clientTag, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +162,7 @@ func scanMachine(rows *sql.Rows) (*Machine, error) {
 		Facility:    fromNull(fac),
 		SubLocation: fromNull(sub_loc),
 		Notes:       fromNull(notes),
+		ClientTag:   fromNull(clientTag),
 	}
 	if created != nil {
 		m.Created = *created
@@ -167,14 +173,14 @@ func scanMachine(rows *sql.Rows) (*Machine, error) {
 	return m, nil
 }
 
-const machineCols = "id, asset, name, type, status, condition, facility, sub_location, notes, created, updated"
+const machineCols = "id, asset, name, type, status, condition, facility, sub_location, notes, client_tag, created, updated"
 
 // machineFieldsEqual compares the user-editable fields (ignoring timestamps and
 // the on-demand Parts slice, which makes Machine non-comparable with ==).
 func machineFieldsEqual(a, b *Machine) bool {
 	return a.Name == b.Name && a.Type == b.Type && a.Status == b.Status &&
 		a.Condition == b.Condition && a.Facility == b.Facility &&
-		a.SubLocation == b.SubLocation && a.Notes == b.Notes
+		a.SubLocation == b.SubLocation && a.Notes == b.Notes && a.ClientTag == b.ClientTag
 }
 
 func (d *SqlStore) FindMachine(id int) *Machine {
@@ -212,8 +218,8 @@ func (d *SqlStore) CreateMachine(updater ModifyMachine) (*Machine, string) {
 	}
 	now := time.Now()
 	res, err := d.db.Exec(
-		"INSERT INTO machine (name, type, status, condition, facility, sub_location, notes, created, updated) VALUES (?,?,?,?,?,?,?,?,?)",
-		str(m.Name), str(m.Type), str(m.Status), str(m.Condition), str(m.Facility), str(m.SubLocation), str(m.Notes), now, now)
+		"INSERT INTO machine (name, type, status, condition, facility, sub_location, notes, client_tag, created, updated) VALUES (?,?,?,?,?,?,?,?,?,?)",
+		str(m.Name), str(m.Type), str(m.Status), str(m.Condition), str(m.Facility), str(m.SubLocation), str(m.Notes), str(m.ClientTag), now, now)
 	if err != nil {
 		return nil, err.Error()
 	}
@@ -241,8 +247,8 @@ func (d *SqlStore) EditMachine(id int, updater ModifyMachine) (bool, string) {
 	}
 	now := time.Now()
 	_, err := d.db.Exec(
-		"UPDATE machine SET name=?, type=?, status=?, condition=?, facility=?, sub_location=?, notes=?, updated=? WHERE id=?",
-		str(m.Name), str(m.Type), str(m.Status), str(m.Condition), str(m.Facility), str(m.SubLocation), str(m.Notes), now, id)
+		"UPDATE machine SET name=?, type=?, status=?, condition=?, facility=?, sub_location=?, notes=?, client_tag=?, updated=? WHERE id=?",
+		str(m.Name), str(m.Type), str(m.Status), str(m.Condition), str(m.Facility), str(m.SubLocation), str(m.Notes), str(m.ClientTag), now, id)
 	if err != nil {
 		return false, err.Error()
 	}

@@ -9,6 +9,7 @@
     <h1>{{if .Name}}{{.Name}}{{else}}(unnamed machine){{end}}</h1>
     <div class="sub">
       <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
+      {{if .ClientTag}}<span class="client-tag-badge">{{.ClientTag}}</span>{{end}}
     </div>
   </div>
   {{if $editable}}
@@ -35,6 +36,7 @@
       {{end}}
     </div></div>
     <div class="spec"><div class="k">Parts</div><div class="v mono">{{len .Parts}}</div></div>
+    {{if .ClientTag}}<div class="spec"><div class="k">Client / Group</div><div class="v">{{.ClientTag}}</div></div>{{end}}
   </div>
   {{if .Notes}}<div style="margin-top:16px"><div class="spec"><div class="k">Notes</div><div class="v">{{.Notes}}</div></div></div>{{end}}
 </div>
