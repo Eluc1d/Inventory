@@ -643,6 +643,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   padding: 10px 14px;
 }
 .live-row:hover { border-color: var(--accent); text-decoration: none; }
+.live-row.kb-selected { border-color: var(--accent); background: rgba(var(--accent-rgb),.08); }
 .live-row .kind {
   font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
   letter-spacing: .08em; color: #fff; padding: 2px 7px; border-radius: 5px;
@@ -798,7 +799,8 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 }
 
 .dropdown-option:hover,
-.dropdown-option:focus {
+.dropdown-option:focus,
+.dropdown-option.kb-selected {
   background: rgba(var(--accent-rgb),.08);
 }
 
@@ -926,6 +928,16 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   color: #eef3f2;
   text-align: left;
   overflow: hidden;
+}
+
+/* Higher specificity than the base rule above (3 class-level selectors vs 2)
+   so this reliably wins regardless of source order — the base rule's
+   background: transparent was otherwise clobbering both :hover/:focus and
+   the keyboard-nav .kb-selected highlight on ties. */
+.topbar-search .dropdown-option:hover,
+.topbar-search .dropdown-option:focus,
+.topbar-search .dropdown-option.kb-selected {
+  background: rgba(255,255,255,.14);
 }
 
 /* Ensure a clear separator between rows */

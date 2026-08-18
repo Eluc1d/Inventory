@@ -29,6 +29,8 @@
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>2</kbd></span><span class="hotkey-desc">Go to Parts inventory</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>3</kbd></span><span class="hotkey-desc">Go to Search</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>/</kbd></span><span class="hotkey-desc">Focus the search box</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd></span><span class="hotkey-desc">Move through search results</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>Enter</kbd></span><span class="hotkey-desc">Open the selected search result</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>Shift</kbd>+<kbd>=</kbd></span><span class="hotkey-desc">Create a new machine</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>?</kbd></span><span class="hotkey-desc">Toggle this panel</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>Esc</kbd></span><span class="hotkey-desc">Close this panel, or unfocus search</span></div>
@@ -150,6 +152,7 @@
   var last = { query: '', rows: [], recent: false };
   var sortKey = null;
   var sortDir = 'asc';
+  var selectedIndex = -1;
 
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -183,7 +186,21 @@
     });
   }
 
+  // Keyboard-selection highlight, driven by ArrowUp/ArrowDown on the input.
+  // Rows are re-rendered on every keystroke/sort, so the highlight resets
+  // rather than trying to track a specific row across a changed result set.
+  function highlightSelected() {
+    var rows = box.querySelectorAll('.live-row');
+    rows.forEach(function (el, i) {
+      el.classList.toggle('kb-selected', i === selectedIndex);
+    });
+    if (selectedIndex >= 0 && rows[selectedIndex]) {
+      rows[selectedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
   function renderRows() {
+    selectedIndex = -1;
     var rows = sortedRows();
     if (!rows.length) {
       var msg = last.query
@@ -230,6 +247,25 @@
     scopeSelect.addEventListener('change', run);
   }
 
+  // ArrowUp/ArrowDown move a selection through the current results,
+  // Enter visits whichever one is selected.
+  input.addEventListener('keydown', function (event) {
+    var rows = box.querySelectorAll('.live-row');
+    if (!rows.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, rows.length - 1);
+      highlightSelected();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, 0);
+      highlightSelected();
+    } else if (event.key === 'Enter' && selectedIndex >= 0 && rows[selectedIndex]) {
+      event.preventDefault();
+      window.location.href = rows[selectedIndex].getAttribute('href');
+    }
+  });
+
   if (header) {
     header.querySelectorAll('.sort-th').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -255,11 +291,23 @@
   if (!input) return;
   var box = document.getElementById('topbarSearchOptions');
   var timer = null;
+  var selectedIndex = -1;
 
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 
+  function highlightSelected() {
+    var options = box.querySelectorAll('.dropdown-option');
+    options.forEach(function (el, i) {
+      el.classList.toggle('kb-selected', i === selectedIndex);
+    });
+    if (selectedIndex >= 0 && options[selectedIndex]) {
+      options[selectedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
   function render(data) {
+    selectedIndex = -1;
     if (!data.rows.length) {
       var msg = data.query ? 'No results for &ldquo;' + esc(data.query) + '&rdquo;.' : 'Nothing tracked yet.';
       box.innerHTML = '<div class="live-empty">' + msg + '</div>';
@@ -292,6 +340,25 @@
     timer = setTimeout(run, 120);
   });
   input.addEventListener('focus', run);
+
+  // ArrowUp/ArrowDown move a selection through the dropdown, Enter visits
+  // whichever option is selected.
+  input.addEventListener('keydown', function (event) {
+    var options = box.querySelectorAll('.dropdown-option');
+    if (!options.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
+      highlightSelected();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, 0);
+      highlightSelected();
+    } else if (event.key === 'Enter' && selectedIndex >= 0 && options[selectedIndex]) {
+      event.preventDefault();
+      window.location = options[selectedIndex].dataset.href;
+    }
+  });
 
   box.addEventListener('click', function (event) {
     var button = event.target.closest('.dropdown-option');
