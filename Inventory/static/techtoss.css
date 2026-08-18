@@ -499,9 +499,43 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   background: var(--panel);
 }
 .searchbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15); }
+/* Mirrors .live-row's grid exactly so each label sits directly above its column. */
+.live-header {
+  display: grid;
+  grid-template-columns: 64px 1fr 130px 150px 90px;
+  gap: 12px;
+  padding: 0 15px; /* +1px vs .live-row to offset its 1px border, so columns line up exactly */
+  margin-top: 16px;
+}
+.live-header .sort-th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: inherit;
+  cursor: pointer;
+  justify-self: start;
+}
+.live-header .sort-th:hover { background: var(--accent-d); color: #fff; text-decoration: none; }
+.live-header .sort-th .sort-arrow { color: #fff; }
+.live-header .sort-th:last-child { justify-self: end; }
 .live-results { margin-top: 6px; display: grid; gap: 8px; }
+.live-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-soft);
+  margin: 2px 2px 0;
+}
 .live-row {
-  display: flex; align-items: center; gap: 12px;
+  display: grid;
+  grid-template-columns: 64px 1fr 130px 150px 90px;
+  align-items: center;
+  gap: 12px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -512,12 +546,33 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
   letter-spacing: .08em; color: #fff; padding: 2px 7px; border-radius: 5px;
   background: var(--ink-soft);
+  justify-self: start;
 }
 .live-row .kind.machine { background: var(--accent-d); }
 .live-row .kind.part { background: var(--st-for-parts); }
 .live-row .lr-title { font-weight: 600; }
-.live-row .lr-sub { color: var(--ink-soft); font-size: 13px; margin-left: 2px; }
-.live-row .lr-badge { margin-left: auto; font-size: 12px; color: var(--ink-soft); font-family: var(--mono); }
+.live-row .lr-sub {
+  color: var(--ink-soft);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Its own fixed-width column so it lines up at the same spot on every row,
+   regardless of how long the title/subtitle next to it happen to be. */
+.live-row .lr-loc {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-row .lr-badge {
+  justify-self: end;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+}
 .live-empty { color: var(--ink-soft); font-size: 14px; padding: 10px 2px; }
 
 /* ------------------------------------------------------------- utilities */
@@ -777,18 +832,31 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   border-top: 1px solid rgba(255,255,255,.08);
 }
 
-/* Title always visible */
+/* Title always visible, but capped so it can't crowd out location/kind */
 .topbar-search .dropdown-option .lr-title {
   order: 1;
   flex: 0 0 auto;
+  max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Name shrinks first */
-.topbar-search .dropdown-option .lr-sub {
+/* Its own small fixed-width slot, same position on every row */
+.topbar-search .dropdown-option .lr-loc {
   order: 2;
+  flex: 0 0 auto;
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: rgba(255,255,255,.6);
+}
+
+/* Category shrinks first */
+.topbar-search .dropdown-option .lr-sub {
+  order: 3;
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -797,9 +865,9 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   color: rgba(255,255,255,.72);
 }
 
-/* Kind after name */
+/* Kind after category */
 .topbar-search .dropdown-option .kind {
-  order: 3;
+  order: 4;
   flex: 0 1 auto;
   min-width: 0;
   padding: 4px 7px;
@@ -815,7 +883,7 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 
 /* Status always visible on the right */
 .topbar-search .dropdown-option .lr-badge {
-  order: 4;
+  order: 5;
   flex: 0 0 auto;
   margin-left: auto;
   font-family: var(--mono);
