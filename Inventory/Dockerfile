@@ -1,10 +1,15 @@
 # Build stage: cgo is required for the SQLite driver.
 FROM golang:1.22-bookworm AS build
 WORKDIR /src
+# The build context (Inventory/) doesn't include the repo's .git, so the
+# version has to come in from outside — pass it explicitly, e.g.:
+#   docker build --build-arg APP_VERSION=$(git describe --tags --always --dirty) .
+# Left unset, the binary falls back to detecting it at runtime (see version.go).
+ARG APP_VERSION=dev
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=1 go build -o /techtoss .
+RUN CGO_ENABLED=1 go build -ldflags "-X main.version=${APP_VERSION}" -o /techtoss .
 
 # Runtime stage.
 FROM debian:bookworm-slim

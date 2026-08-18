@@ -84,6 +84,16 @@ a:hover { text-decoration: underline; }
   height: 52px;
   width: auto;
 }
+.version-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,.8);
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.24);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
 .nav a {
   color: rgba(255,255,255,.78);
