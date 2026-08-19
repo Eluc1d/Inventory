@@ -393,3 +393,95 @@ func seedIfEmpty(store Store) {
 		})
 	}
 }
+
+// seedSampleTickets adds a handful of realistic client-request tickets, with
+// varied statuses/deadlines/item kinds, for exercising the Tickets page.
+// Unlike seedIfEmpty, this is purely additive (CreateTicket + item inserts,
+// never a delete) and doesn't check whether tickets already exist first —
+// it's meant to be run on demand via -seed-tickets, including against a
+// database that already has real tickets in it.
+func seedSampleTickets(store Store) {
+	log.Printf("Seeding sample tickets")
+
+	type itemSpec struct {
+		kind, description string
+		qty               int
+	}
+	tickets := []struct {
+		title, client, deadline, status, notes string
+		items                                  []itemSpec
+	}{
+		{
+			title: "Refurb 3 laptops for office move", client: "Meridian Nonprofit Partners",
+			deadline: "2026-09-05", status: "In Progress",
+			notes: "Client needs Windows 11 Pro preinstalled on all three.",
+			items: []itemSpec{
+				{"Machine", "3x business laptops, 16GB RAM minimum", 3},
+				{"Part", "USB-C docking stations", 3},
+				{"Custom", "Data migration from their old machines", 1},
+			},
+		},
+		{
+			title: "Custom gaming build for donor's grandson", client: "Diane R.",
+			deadline: "2026-08-25", status: "Open",
+			notes: "Donor specifically requested a photo of the finished build before pickup.",
+			items: []itemSpec{
+				{"Machine", "1x custom gaming tower, RTX-class GPU", 1},
+				{"Part", "RGB case fans", 4},
+				{"Custom", "Cable management + benchmark video for the donor", 1},
+			},
+		},
+		{
+			title: "Bulk desktop order — Almond Orchard volunteers", client: "Almond Orchard Community Center",
+			deadline: "2026-08-01", status: "Fulfilled",
+			notes: "Delivered and set up on-site; all five tested working before handoff.",
+			items: []itemSpec{
+				{"Machine", "5x refurbished desktops, basic office use", 5},
+				{"Custom", "Delivery + on-site setup for 5 volunteer stations", 1},
+			},
+		},
+		{
+			title: "Replacement PSU + diagnostics", client: "Marcus T.",
+			deadline: "", status: "Cancelled",
+			notes: "Client found a cheaper option elsewhere — cancelled before work started.",
+			items: []itemSpec{
+				{"Part", "650W 80+ Gold PSU", 1},
+				{"Custom", "Full diagnostic run before return", 1},
+			},
+		},
+		{
+			title: "School lab refresh — 8 workstations", client: "Lincoln Elementary STEM Lab",
+			deadline: "2026-10-01", status: "Open",
+			notes: "Grant-funded order — an invoice is needed for their reimbursement paperwork.",
+			items: []itemSpec{
+				{"Machine", "8x mini PCs for classroom lab", 8},
+				{"Part", "USB keyboard/mouse combos", 8},
+				{"Part", "8-port network switch", 1},
+				{"Custom", "Asset tagging + inventory list for school records", 1},
+			},
+		},
+	}
+
+	for _, ts := range tickets {
+		ts := ts
+		t, errStr := store.CreateTicket(func(t *Ticket) bool {
+			t.Title = ts.title
+			t.Client = ts.client
+			t.Deadline = ts.deadline
+			t.Status = ts.status
+			t.Notes = ts.notes
+			return true
+		})
+		if t == nil {
+			log.Printf("seed ticket failed: %s", errStr)
+			continue
+		}
+		items := make([]*TicketItem, 0, len(ts.items))
+		for _, is := range ts.items {
+			items = append(items, &TicketItem{Kind: is.kind, Description: is.description, Quantity: is.qty})
+		}
+		if ok, errStr := store.ReplaceTicketItems(t.Id, items); !ok {
+			log.Printf("seed ticket items failed for %s: %s", t.Number, errStr)
+		}
+	}
+}

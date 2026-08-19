@@ -83,6 +83,15 @@
         });
       }
 
+      // Grows a description textarea to fit its content instead of
+      // scrolling or clipping — resetting height to 'auto' first is what
+      // lets scrollHeight shrink back down again after text is deleted, not
+      // just grow.
+      function autosize(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+      }
+
       // Reads the live DOM rather than a JS-side mirror of the data, so it's
       // always authoritative for whatever the user has actually typed —
       // used both when add/remove need to preserve in-progress edits in
@@ -110,11 +119,15 @@
           }).join('');
           return '<div class="item-row">' +
             '<select class="item-kind">' + options + '</select>' +
-            '<input class="item-desc" type="text" placeholder="What they want" value="' + esc(item.description) + '">' +
+            '<textarea class="item-desc" rows="1" placeholder="What they want">' + esc(item.description) + '</textarea>' +
             '<input class="item-qty" type="number" min="1" value="' + item.quantity + '">' +
             '<button type="button" class="btn ghost small item-remove">Remove</button>' +
           '</div>';
         }).join('');
+        // Long seeded/carried-over descriptions need their height set once
+        // up front — otherwise they'd stay collapsed until the user's next
+        // keystroke triggers the input listener below.
+        list.querySelectorAll('.item-desc').forEach(autosize);
       }
 
       document.getElementById('addItemButton').addEventListener('click', function () {
@@ -131,6 +144,14 @@
         items = collectItems();
         items.splice(index, 1);
         render();
+      });
+
+      // Keep a description growing as the user types, rather than waiting
+      // for the next full render() to pick up its new height.
+      list.addEventListener('input', function (event) {
+        if (event.target.classList.contains('item-desc')) {
+          autosize(event.target);
+        }
       });
 
       // Always populate items_json right before submit, from whatever's

@@ -176,8 +176,14 @@ func (h *Handlers) ticketEdit(w http.ResponseWriter, r *http.Request) {
 		// the plain text fields (title/client/.../items_json), so
 		// r.FormValue and the r.Form["items_json"] presence check below
 		// continue to work unchanged.
+		//
+		// ErrNotMultipart is deliberately not treated as fatal: it means
+		// ParseMultipartForm's internal ParseForm call still ran and
+		// populated r.Form correctly from a plain urlencoded body — only a
+		// genuinely malformed request or an over-limit body (via
+		// MaxBytesReader) should reject the submission outright.
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
-		if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+		if err := r.ParseMultipartForm(maxUploadBytes); err != nil && err != http.ErrNotMultipart {
 			http.Error(w, "Invalid form submission, or attachments too large.", http.StatusBadRequest)
 			return
 		}

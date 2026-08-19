@@ -44,7 +44,12 @@
 <div class="panel">
   <h2 style="margin:0 0 4px">Items requested</h2>
   {{if $t.Items}}
-  <table class="parts-table" style="margin-top:12px">
+  <table class="parts-table items-table" style="margin-top:12px">
+    <colgroup>
+      <col style="width:110px">
+      <col>
+      <col style="width:70px">
+    </colgroup>
     <thead>
       <tr><th>Kind</th><th>Description</th><th style="text-align:right">Qty</th></tr>
     </thead>

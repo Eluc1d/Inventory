@@ -58,6 +58,7 @@ func main() {
 	editNetsSpec := flag.String("edit-permission-nets", "",
 		"Comma-separated CIDR networks allowed to edit (empty = everyone)")
 	seed := flag.Bool("seed", false, "Seed the database with a few example machines/parts if empty")
+	seedTickets := flag.Bool("seed-tickets", false, "Add sample tickets for testing (additive; safe to run even if tickets already exist)")
 	flag.Parse()
 
 	if _, err := os.Stat(*dbFile); err != nil {
@@ -83,6 +84,9 @@ func main() {
 
 	if *seed {
 		seedIfEmpty(store)
+	}
+	if *seedTickets {
+		seedSampleTickets(store)
 	}
 
 	tmpl := NewTemplates(*templateDir, *cacheTemplates)

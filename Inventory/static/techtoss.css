@@ -487,6 +487,19 @@ main {
   max-width: 320px;
   vertical-align: bottom;
 }
+
+/* Ticket items table: same fixed-column-widths idea as .truncating above,
+   but wrapping the description in full instead of ellipsis-truncating it —
+   a client's request should stay fully readable. Kind/Qty get a fixed width
+   via <colgroup> in the template; Description takes the remaining space and
+   wraps, growing the row (rather than the column) to fit — which is what
+   keeps Qty from getting shoved out of the table by a long unbroken line. */
+.items-table { table-layout: fixed; }
+.items-table .model {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 .expandable-row { cursor: pointer; }
 .expandable-row.expanded .model,
 .expandable-row.expanded .spec,
@@ -1068,9 +1081,44 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
   display: grid;
   grid-template-columns: 130px 1fr 90px auto;
   gap: 8px;
-  align-items: center;
+  /* start, not center: the description grows taller than its neighbors as
+     text wraps (see .item-desc below), and top-aligning the shorter
+     kind/qty/remove controls against that reads better than re-centering
+     them against a variable-height row. */
+  align-items: start;
 }
-.item-row select, .item-row input { margin: 0; }
+.item-row select,
+.item-row input,
+.item-row textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin: 0;
+  width: 100%;
+}
+.item-row select:focus,
+.item-row input:focus,
+.item-row textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.15);
+}
+/* Auto-grows via JS (see ticket-form.html) instead of scrolling internally
+   or clipping — long descriptions push later rows down rather than
+   overflowing the box. resize is turned off since the height is already
+   managed automatically; a manual drag-handle would fight that. */
+.item-row .item-desc {
+  resize: none;
+  overflow: hidden;
+  min-height: 38px;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  font-family: inherit;
+}
 .item-row-empty { color: var(--ink-soft); font-size: 13px; padding: 4px 0; }
 
 /* ------------------------------------------------------- attachments */
