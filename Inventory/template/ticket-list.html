@@ -1,0 +1,52 @@
+{{template "head" .}}
+{{$editable := .Editable}}
+{{with .Data}}
+{{$status := .StatusFilter}}
+
+<div class="page-head">
+  <div>
+    <h1>Tickets</h1>
+    <div class="sub">{{.Total}} ticket{{if ne .Total 1}}s{{end}} tracked</div>
+  </div>
+  <div class="page-actions">
+    {{if $editable}}<a class="btn" href="/ticket/edit?id=new">+ New ticket</a>{{end}}
+  </div>
+</div>
+
+<div class="status-strip">
+  <a class="status-pill {{if not $status}}active{{end}}" href="/tickets">All <span class="n">{{.Total}}</span></a>
+  {{range .Statuses}}
+    <a class="status-pill s-{{statusSlug .}} {{if eq . $status}}active{{end}}" href="/tickets?status={{.}}">
+      <span class="swatch" style="background:var(--st-accent)"></span>
+      {{.}}
+    </a>
+  {{end}}
+</div>
+
+{{if .Tickets}}
+<div class="tag-grid">
+  {{range .Tickets}}
+  <a class="tag s-{{statusSlug .Status}}" href="/ticket?id={{.Id}}">
+    <div class="asset">{{.Number}}</div>
+    <div class="name cell-truncate" title="{{if .Title}}{{.Title}}{{else}}(untitled ticket){{end}}">{{if .Title}}{{.Title}}{{else}}(untitled ticket){{end}}</div>
+    <div class="meta">
+      {{if .Client}}<span class="type cell-truncate cell-truncate-sm" title="{{.Client}}">{{.Client}}</span>{{end}}
+      <span class="chip s-{{statusSlug .Status}}"><span class="led"></span>{{.Status}}</span>
+      {{if .Deadline}}<span>Due {{.Deadline}}</span>{{else}}<span>No deadline</span>{{end}}
+      {{if .Attachments}}<span class="att-badge" title="{{len .Attachments}} attachment(s)">&#128206; {{len .Attachments}}</span>{{end}}
+      {{if .Notes}}<button type="button" class="notes-toggle" data-notes-target="notes-ticket-{{.Id}}" title="Show notes">&#128172;</button>{{end}}
+    </div>
+    {{if .Notes}}<div class="notes-bubble hidden" id="notes-ticket-{{.Id}}">{{.Notes}}</div>{{end}}
+  </a>
+  {{end}}
+</div>
+{{else}}
+<div class="empty">
+  <h3>No tickets yet</h3>
+  <p>Log a client's request to start tracking what they want.</p>
+  {{if $editable}}<a class="btn" href="/ticket/edit?id=new">+ New ticket</a>{{end}}
+</div>
+{{end}}
+{{end}}
+
+{{template "foot" .}}

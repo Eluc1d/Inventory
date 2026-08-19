@@ -30,6 +30,11 @@
   --st-sold:        #3f9142;
   --st-tossed:      #8a5a42;
 
+  --tk-open:        #2f6fd6;
+  --tk-in-progress: #d6961f;
+  --tk-fulfilled:   #2f9e5c;
+  --tk-cancelled:   #8a8398;
+
   --cond-working:  #3f9142;
   --cond-untested: #8a809a;
   --cond-faulty:   #c0473a;
@@ -400,6 +405,17 @@ main {
 .s-for-parts   { --st-accent: var(--st-for-parts); }
 .s-sold        { --st-accent: var(--st-sold); }
 .s-tossed      { --st-accent: var(--st-tossed); }
+
+/* ticket status color mapping — same --st-accent mechanism as machine
+   statuses above, just a separate set of slugs/colors since a ticket's
+   workflow (Open/In Progress/Fulfilled/Cancelled) is unrelated to a
+   machine's. Not automatic: statusSlug only builds the class name, this
+   mapping has to exist for each status or the chip/card-spine falls back to
+   the generic gray default. */
+.s-open         { --st-accent: var(--tk-open); }
+.s-in-progress  { --st-accent: var(--tk-in-progress); }
+.s-fulfilled    { --st-accent: var(--tk-fulfilled); }
+.s-cancelled    { --st-accent: var(--tk-cancelled); }
 
 /* -------------------------------------------------------------- panels */
 
@@ -1043,4 +1059,88 @@ form.stack { display: grid; gap: 16px; max-width: 640px; }
 .selection-toolbar .selected-summary {
   color: var(--ink-soft);
   font-size: 13px;
+}
+
+/* --------------------------------------------------------- ticket items */
+
+.item-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
+.item-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 90px auto;
+  gap: 8px;
+  align-items: center;
+}
+.item-row select, .item-row input { margin: 0; }
+.item-row-empty { color: var(--ink-soft); font-size: 13px; padding: 4px 0; }
+
+/* ------------------------------------------------------- attachments */
+
+.attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.attachment-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+}
+.attachment-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+  background: var(--line-2);
+}
+.attachment-card .doc-icon {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--ink-soft);
+  background: var(--line-2);
+}
+.attachment-card .att-info {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.attachment-card .att-name {
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-card .att-delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(36,28,61,.65);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.attachment-card .att-delete:hover { background: rgba(36,28,61,.85); }
+
+.att-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
 }

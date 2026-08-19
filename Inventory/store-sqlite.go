@@ -74,6 +74,9 @@ func NewSqlStore(db *sql.DB) (*SqlStore, error) {
 	if err := renameFacility(db, "Workshop", "Techtoss"); err != nil {
 		return nil, err
 	}
+	if err := initTicketSchema(db); err != nil {
+		return nil, err
+	}
 
 	// SQLite ignores FK constraints unless asked.
 	db.Exec("PRAGMA foreign_keys = ON")

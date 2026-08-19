@@ -1,0 +1,106 @@
+{{template "head" .}}
+{{$editable := .Editable}}
+{{with .Data}}
+{{$t := .Ticket}}
+<div class="crumb"><a href="/tickets">Tickets</a> // {{$t.Number}}</div>
+
+{{if gt .RejectedCount 0}}
+<div class="flash small" style="background:#fdeeee;border-color:#e3c4c0">
+  <p>{{.RejectedCount}} file(s) were rejected &mdash; allowed types: pdf, doc, docx, txt, png, jpg, jpeg, gif, webp.</p>
+</div>
+{{end}}
+
+<div class="page-head">
+  <div>
+    <div class="asset mono" style="color:var(--ink-soft);font-size:13px;letter-spacing:.08em">{{$t.Number}}</div>
+    <h1>{{if $t.Title}}{{$t.Title}}{{else}}(untitled ticket){{end}}</h1>
+    <div class="sub">
+      <span class="chip s-{{statusSlug $t.Status}}"><span class="led"></span>{{$t.Status}}</span>
+      {{if $t.Client}}<span class="client-tag-badge">{{$t.Client}}</span>{{end}}
+    </div>
+  </div>
+  {{if $editable}}
+  <div class="head-actions">
+    <a class="btn ghost" href="/ticket/edit?id={{$t.Id}}">Edit ticket</a>
+    <form method="post" action="/ticket/delete" style="display:inline"
+          onsubmit="return confirm('Delete {{$t.Number}} and its {{len $t.Items}} item(s) and {{len $t.Attachments}} attachment(s)? This cannot be undone.');">
+      <input type="hidden" name="id" value="{{$t.Id}}">
+      <button class="btn danger" type="submit">Delete ticket</button>
+    </form>
+  </div>
+  {{end}}
+</div>
+
+<div class="panel">
+  <div class="specs">
+    <div class="spec"><div class="k">Client</div><div class="v">{{if $t.Client}}{{$t.Client}}{{else}}&mdash;{{end}}</div></div>
+    <div class="spec"><div class="k">Deadline</div><div class="v mono">{{if $t.Deadline}}{{$t.Deadline}}{{else}}&mdash;{{end}}</div></div>
+    <div class="spec"><div class="k">Created</div><div class="v mono">{{$t.Created.Format "2006-01-02"}}</div></div>
+    <div class="spec"><div class="k">Items</div><div class="v mono">{{len $t.Items}}</div></div>
+  </div>
+  {{if $t.Notes}}<div style="margin-top:16px"><div class="spec"><div class="k">Notes</div><div class="v">{{$t.Notes}}</div></div></div>{{end}}
+</div>
+
+<div class="panel">
+  <h2 style="margin:0 0 4px">Items requested</h2>
+  {{if $t.Items}}
+  <table class="parts-table" style="margin-top:12px">
+    <thead>
+      <tr><th>Kind</th><th>Description</th><th style="text-align:right">Qty</th></tr>
+    </thead>
+    <tbody>
+      {{range $t.Items}}
+      <tr>
+        <td><span class="cat">{{.Kind}}</span></td>
+        <td><div class="model">{{.Description}}</div></td>
+        <td class="qty">{{.Quantity}}&times;</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="sub" style="margin-top:12px">Nothing itemized yet.</p>
+  {{end}}
+</div>
+
+<div class="panel">
+  <h2 style="margin:0 0 4px">Attachments</h2>
+
+  {{if $t.Attachments}}
+  <div class="attachment-grid">
+    {{range $t.Attachments}}
+    <div class="attachment-card">
+      {{if .IsImage}}
+        <a href="/uploads/{{.Filename}}" target="_blank" rel="noopener"><img src="/uploads/{{.Filename}}" alt="{{.OriginalName}}"></a>
+      {{else}}
+        <a class="doc-icon" href="/uploads/{{.Filename}}" target="_blank" rel="noopener" title="Open {{.OriginalName}}">&#128196;</a>
+      {{end}}
+      <div class="att-info">
+        <a class="att-name" href="/uploads/{{.Filename}}" target="_blank" rel="noopener" title="{{.OriginalName}}">{{.OriginalName}}</a>
+        <span>{{.SizeLabel}}</span>
+      </div>
+      {{if $editable}}
+      <form method="post" action="/ticket/attachment/delete"
+            onsubmit="return confirm('Delete {{.OriginalName}}? This cannot be undone.');">
+        <input type="hidden" name="id" value="{{.Id}}">
+        <input type="hidden" name="ticket_id" value="{{$t.Id}}">
+        <button class="att-delete" type="submit" title="Delete attachment">&times;</button>
+      </form>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="sub" style="margin-top:12px">No documents or images attached yet.</p>
+  {{end}}
+
+  {{if $editable}}
+  <form method="post" action="/ticket/attachment/upload" enctype="multipart/form-data" style="margin-top:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+    <input type="hidden" name="ticket_id" value="{{$t.Id}}">
+    <input type="file" name="files" multiple accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp">
+    <button class="btn small" type="submit">Upload</button>
+  </form>
+  {{end}}
+</div>
+{{end}}
+{{template "foot" .}}
