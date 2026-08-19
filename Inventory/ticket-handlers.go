@@ -168,8 +168,17 @@ func (h *Handlers) ticketEdit(w http.ResponseWriter, r *http.Request) {
 	isNew := idParam == "" || idParam == "new"
 
 	if r.Method == http.MethodPost {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Invalid form submission.", http.StatusBadRequest)
+		// The form carries an optional file input alongside its text fields,
+		// so it POSTs as multipart/form-data — parse it as such rather than
+		// r.ParseForm (which ignores multipart bodies entirely). As with
+		// attachmentUpload, MaxBytesReader must wrap the body before
+		// anything reads it. ParseMultipartForm still populates r.Form for
+		// the plain text fields (title/client/.../items_json), so
+		// r.FormValue and the r.Form["items_json"] presence check below
+		// continue to work unchanged.
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
+		if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+			http.Error(w, "Invalid form submission, or attachments too large.", http.StatusBadRequest)
 			return
 		}
 
@@ -178,6 +187,11 @@ func (h *Handlers) ticketEdit(w http.ResponseWriter, r *http.Request) {
 		deadline := strings.TrimSpace(r.FormValue("deadline"))
 		status := strings.TrimSpace(r.FormValue("status"))
 		notes := strings.TrimSpace(r.FormValue("notes"))
+
+		var files []*multipart.FileHeader
+		if r.MultipartForm != nil {
+			files = r.MultipartForm.File["files"]
+		}
 
 		if isNew {
 			t, errStr := h.store.CreateTicket(func(t *Ticket) bool {
@@ -193,7 +207,8 @@ func (h *Handlers) ticketEdit(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			h.applyTicketItems(r, t.Id)
-			http.Redirect(w, r, "/ticket?id="+strconv.Itoa(t.Id), http.StatusSeeOther)
+			rejected := h.processAttachmentUploads(files, t.Id)
+			http.Redirect(w, r, ticketRedirectURL(t.Id, rejected), http.StatusSeeOther)
 			return
 		}
 
@@ -212,7 +227,8 @@ func (h *Handlers) ticketEdit(w http.ResponseWriter, r *http.Request) {
 		// Items may have changed even when the ticket's own fields didn't
 		// (EditTicket returning "no change" above must not skip this).
 		h.applyTicketItems(r, id)
-		http.Redirect(w, r, "/ticket?id="+strconv.Itoa(id), http.StatusSeeOther)
+		rejected := h.processAttachmentUploads(files, id)
+		http.Redirect(w, r, ticketRedirectURL(id, rejected), http.StatusSeeOther)
 		return
 	}
 
@@ -237,6 +253,16 @@ func (h *Handlers) ticketEdit(w http.ResponseWriter, r *http.Request) {
 			IsNew:  isNew,
 		},
 	})
+}
+
+// ticketRedirectURL builds the post-save destination for a ticket, appending
+// a rejected-file count for ticket-detail.html's flash message when relevant.
+func ticketRedirectURL(ticketId, rejected int) string {
+	url := "/ticket?id=" + strconv.Itoa(ticketId)
+	if rejected > 0 {
+		url += "&rejected=" + strconv.Itoa(rejected)
+	}
+	return url
 }
 
 func (h *Handlers) ticketDelete(w http.ResponseWriter, r *http.Request) {
@@ -302,6 +328,65 @@ func randomAttachmentFilename(ext string) (string, error) {
 	return hex.EncodeToString(buf) + ext, nil
 }
 
+// processAttachmentUploads writes each uploaded file to disk (subject to the
+// extension allow-list) and creates its attachment record against ticketId.
+// Shared by attachmentUpload (the detail page's standalone uploader) and
+// ticketEdit (attaching files at create/edit time) so this — the
+// security-sensitive part — has exactly one implementation. Returns how many
+// files were rejected for a disallowed extension, for the caller to surface.
+func (h *Handlers) processAttachmentUploads(files []*multipart.FileHeader, ticketId int) int {
+	rejected := 0
+	for _, fh := range files {
+		ext := strings.ToLower(filepath.Ext(fh.Filename))
+		if !allowedAttachmentExts[ext] {
+			rejected++
+			continue
+		}
+
+		src, err := fh.Open()
+		if err != nil {
+			log.Printf("processAttachmentUploads: open %q: %v", fh.Filename, err)
+			continue
+		}
+
+		storedName, err := randomAttachmentFilename(ext)
+		if err != nil {
+			src.Close()
+			log.Printf("processAttachmentUploads: generating filename: %v", err)
+			continue
+		}
+		storedPath := filepath.Join(h.uploadsDir, storedName)
+
+		dst, err := os.OpenFile(storedPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+		if err != nil {
+			src.Close()
+			log.Printf("processAttachmentUploads: creating %q: %v", storedName, err)
+			continue
+		}
+		written, copyErr := io.Copy(dst, src)
+		src.Close()
+		dst.Close()
+		if copyErr != nil {
+			os.Remove(storedPath)
+			log.Printf("processAttachmentUploads: writing %q: %v", storedName, copyErr)
+			continue
+		}
+
+		if _, errStr := h.store.CreateAttachment(func(a *TicketAttachment) bool {
+			a.TicketId = ticketId
+			a.Filename = storedName
+			a.OriginalName = fh.Filename
+			a.ContentType = fh.Header.Get("Content-Type")
+			a.Size = written
+			return true
+		}); errStr != "" {
+			os.Remove(storedPath)
+			log.Printf("processAttachmentUploads: create attachment record: %s", errStr)
+		}
+	}
+	return rejected
+}
+
 func (h *Handlers) attachmentUpload(w http.ResponseWriter, r *http.Request) {
 	if !h.canEdit(r) {
 		http.Error(w, "Editing not permitted from your network.", http.StatusForbidden)
@@ -333,62 +418,8 @@ func (h *Handlers) attachmentUpload(w http.ResponseWriter, r *http.Request) {
 	if r.MultipartForm != nil {
 		files = r.MultipartForm.File["files"]
 	}
-
-	rejected := 0
-	for _, fh := range files {
-		ext := strings.ToLower(filepath.Ext(fh.Filename))
-		if !allowedAttachmentExts[ext] {
-			rejected++
-			continue
-		}
-
-		src, err := fh.Open()
-		if err != nil {
-			log.Printf("attachmentUpload: open %q: %v", fh.Filename, err)
-			continue
-		}
-
-		storedName, err := randomAttachmentFilename(ext)
-		if err != nil {
-			src.Close()
-			log.Printf("attachmentUpload: generating filename: %v", err)
-			continue
-		}
-		storedPath := filepath.Join(h.uploadsDir, storedName)
-
-		dst, err := os.OpenFile(storedPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
-		if err != nil {
-			src.Close()
-			log.Printf("attachmentUpload: creating %q: %v", storedName, err)
-			continue
-		}
-		written, copyErr := io.Copy(dst, src)
-		src.Close()
-		dst.Close()
-		if copyErr != nil {
-			os.Remove(storedPath)
-			log.Printf("attachmentUpload: writing %q: %v", storedName, copyErr)
-			continue
-		}
-
-		if _, errStr := h.store.CreateAttachment(func(a *TicketAttachment) bool {
-			a.TicketId = ticketId
-			a.Filename = storedName
-			a.OriginalName = fh.Filename
-			a.ContentType = fh.Header.Get("Content-Type")
-			a.Size = written
-			return true
-		}); errStr != "" {
-			os.Remove(storedPath)
-			log.Printf("attachmentUpload: create attachment record: %s", errStr)
-		}
-	}
-
-	redirectURL := "/ticket?id=" + strconv.Itoa(ticketId)
-	if rejected > 0 {
-		redirectURL += "&rejected=" + strconv.Itoa(rejected)
-	}
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	rejected := h.processAttachmentUploads(files, ticketId)
+	http.Redirect(w, r, ticketRedirectURL(ticketId, rejected), http.StatusSeeOther)
 }
 
 func (h *Handlers) attachmentDelete(w http.ResponseWriter, r *http.Request) {

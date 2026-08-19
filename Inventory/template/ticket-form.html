@@ -15,7 +15,7 @@
   <h1>{{if $data.IsNew}}Log a ticket{{else}}Edit {{$t.Number}}{{end}}</h1>
 </div>
 
-<form class="stack" method="post" action="/ticket/edit?id={{if $data.IsNew}}new{{else}}{{$t.Id}}{{end}}">
+<form class="stack" method="post" enctype="multipart/form-data" action="/ticket/edit?id={{if $data.IsNew}}new{{else}}{{$t.Id}}{{end}}">
   <div class="form-row">
     <div class="field">
       <label for="title">Title</label>
@@ -54,6 +54,12 @@
     <div class="item-row-empty hidden" id="itemEmptyMsg">No items added yet.</div>
     <button type="button" class="btn ghost small" id="addItemButton">+ Add item</button>
     <input type="hidden" name="items_json" id="itemsJsonInput">
+  </div>
+
+  <div class="field">
+    <label for="files">Attach documents / images</label>
+    <input id="files" name="files" type="file" multiple accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp">
+    <div class="hint">Optional. Allowed types: PDF, DOC/DOCX, TXT, PNG, JPG, GIF, WEBP.{{if not $data.IsNew}} Existing attachments are managed from the ticket page.{{end}}</div>
   </div>
 
   <script>
