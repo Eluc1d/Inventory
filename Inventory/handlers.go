@@ -15,13 +15,14 @@ import (
 
 // Handlers bundles the store, templates and edit-permission config.
 type Handlers struct {
-	store    Store
-	tmpl     *Templates
-	editNets []*net.IPNet
+	store      Store
+	tmpl       *Templates
+	editNets   []*net.IPNet
+	uploadsDir string
 }
 
-func NewHandlers(store Store, tmpl *Templates, editNets []*net.IPNet) *Handlers {
-	return &Handlers{store: store, tmpl: tmpl, editNets: editNets}
+func NewHandlers(store Store, tmpl *Templates, editNets []*net.IPNet, uploadsDir string) *Handlers {
+	return &Handlers{store: store, tmpl: tmpl, editNets: editNets, uploadsDir: uploadsDir}
 }
 
 // canEdit reports whether the request comes from an allowed editor network.
@@ -57,7 +58,7 @@ func atoiDefault(s string, def int) int {
 type page struct {
 	Title    string
 	Editable bool
-	Active   string // nav highlight: "machines" | "inventory" | "search"
+	Active   string // nav highlight: "machines" | "inventory" | "search" | "tickets"
 	Flash    string
 	Data     interface{}
 }

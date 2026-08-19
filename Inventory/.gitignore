@@ -1,6 +1,9 @@
 # Build output
 /techtoss
 
+# Uploaded ticket attachments
+/uploads
+
 # Databases
 *.db
 *.db-journal

@@ -15,6 +15,7 @@
       <a href="/"          class="{{if eq .Active "machines"}}active{{end}}">Machines</a>
       <a href="/inventory" class="{{if eq .Active "inventory"}}active{{end}}">Parts</a>
       <a href="/search"    class="{{if eq .Active "search"}}active{{end}}">Search</a>
+      <a href="/tickets"   class="{{if eq .Active "tickets"}}active{{end}}">Tickets</a>
     </nav>
     <div class="topbar-search">
       <input id="topbarSearch" type="search" autocomplete="off"
@@ -29,6 +30,7 @@
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>1</kbd></span><span class="hotkey-desc">Go to Machines</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>2</kbd></span><span class="hotkey-desc">Go to Parts inventory</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>3</kbd></span><span class="hotkey-desc">Go to Search</span></div>
+        <div class="hotkey-row"><span class="hotkey-keys"><kbd>4</kbd></span><span class="hotkey-desc">Go to Tickets</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>/</kbd></span><span class="hotkey-desc">Focus the search box</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd></span><span class="hotkey-desc">Move through search results</span></div>
         <div class="hotkey-row"><span class="hotkey-keys"><kbd>Enter</kbd></span><span class="hotkey-desc">Open the selected search result</span></div>
@@ -88,7 +90,7 @@
     var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
 
     // 1/2/3 jump between the app's three top-level pages.
-    var navTargets = { '1': '/', '2': '/inventory', '3': '/search' };
+    var navTargets = { '1': '/', '2': '/inventory', '3': '/search', '4': '/tickets' };
     if (navTargets.hasOwnProperty(event.key) && !typing) {
       event.preventDefault();
       var dest = navTargets[event.key];

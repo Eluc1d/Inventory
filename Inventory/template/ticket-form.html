@@ -1,0 +1,173 @@
+{{template "head" .}}
+{{with .Data}}
+{{$data := .}}
+{{$t := .Ticket}}
+<div class="crumb">
+  <a href="/tickets">Tickets</a> //
+  {{if $data.IsNew}}
+    New ticket
+  {{else}}
+    <a href="/ticket?id={{$t.Id}}">{{$t.Number}}</a> // Edit
+  {{end}}
+</div>
+
+<div class="page-head form-inline">
+  <h1>{{if $data.IsNew}}Log a ticket{{else}}Edit {{$t.Number}}{{end}}</h1>
+</div>
+
+<form class="stack" method="post" enctype="multipart/form-data" action="/ticket/edit?id={{if $data.IsNew}}new{{else}}{{$t.Id}}{{end}}">
+  <div class="form-row">
+    <div class="field">
+      <label for="title">Title</label>
+      <input id="title" name="title" value="{{$t.Title}}" placeholder="e.g. Refurb 3 laptops for office move" required autofocus>
+    </div>
+    <div class="field">
+      <label for="client">Client</label>
+      <input id="client" name="client" value="{{$t.Client}}" placeholder="e.g. Smith Family" required>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="field">
+      <label for="deadline">Deadline</label>
+      <input id="deadline" name="deadline" type="date" value="{{$t.Deadline}}">
+    </div>
+    <div class="field">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="">-- Select status --</option>
+        {{range ticketStatuses}}
+          <option value="{{.}}" {{if eq . $t.Status}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes">{{$t.Notes}}</textarea>
+  </div>
+
+  <div class="field">
+    <label>Items requested</label>
+    <div class="item-list" id="itemList"></div>
+    <div class="item-row-empty hidden" id="itemEmptyMsg">No items added yet.</div>
+    <button type="button" class="btn ghost small" id="addItemButton">+ Add item</button>
+    <input type="hidden" name="items_json" id="itemsJsonInput">
+  </div>
+
+  <div class="field">
+    <label for="files">Attach documents / images</label>
+    <input id="files" name="files" type="file" multiple accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp">
+    <div class="hint">Optional. Allowed types: PDF, DOC/DOCX, TXT, PNG, JPG, GIF, WEBP.{{if not $data.IsNew}} Existing attachments are managed from the ticket page.{{end}}</div>
+  </div>
+
+  <script>
+    (function () {
+      // Seed from the ticket's existing items (empty on a new ticket) so the
+      // form always has a populated starting point, edit or create alike.
+      var seedItems = {{json $t.Items}};
+      var items = (seedItems || []).map(function (it) {
+        return { kind: it.kind || 'Custom', description: it.description || '', quantity: it.quantity || 1 };
+      });
+
+      var list = document.getElementById('itemList');
+      var emptyMsg = document.getElementById('itemEmptyMsg');
+      var input = document.getElementById('itemsJsonInput');
+      var form = input.closest('form');
+      var kinds = ['Machine', 'Part', 'Custom'];
+
+      function esc(s) {
+        return (s || '').replace(/[&<>"]/g, function (c) {
+          return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+        });
+      }
+
+      // Grows a description textarea to fit its content instead of
+      // scrolling or clipping — resetting height to 'auto' first is what
+      // lets scrollHeight shrink back down again after text is deleted, not
+      // just grow.
+      function autosize(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+      }
+
+      // Reads the live DOM rather than a JS-side mirror of the data, so it's
+      // always authoritative for whatever the user has actually typed —
+      // used both when add/remove need to preserve in-progress edits in
+      // other rows, and again right before submit.
+      function collectItems() {
+        return Array.from(list.querySelectorAll('.item-row')).map(function (row) {
+          return {
+            kind: row.querySelector('.item-kind').value,
+            description: row.querySelector('.item-desc').value,
+            quantity: Math.max(1, Number(row.querySelector('.item-qty').value) || 1)
+          };
+        });
+      }
+
+      function render() {
+        if (!items.length) {
+          list.innerHTML = '';
+          emptyMsg.classList.remove('hidden');
+          return;
+        }
+        emptyMsg.classList.add('hidden');
+        list.innerHTML = items.map(function (item) {
+          var options = kinds.map(function (k) {
+            return '<option value="' + k + '"' + (item.kind === k ? ' selected' : '') + '>' + k + '</option>';
+          }).join('');
+          return '<div class="item-row">' +
+            '<select class="item-kind">' + options + '</select>' +
+            '<textarea class="item-desc" rows="1" placeholder="What they want">' + esc(item.description) + '</textarea>' +
+            '<input class="item-qty" type="number" min="1" value="' + item.quantity + '">' +
+            '<button type="button" class="btn ghost small item-remove">Remove</button>' +
+          '</div>';
+        }).join('');
+        // Long seeded/carried-over descriptions need their height set once
+        // up front — otherwise they'd stay collapsed until the user's next
+        // keystroke triggers the input listener below.
+        list.querySelectorAll('.item-desc').forEach(autosize);
+      }
+
+      document.getElementById('addItemButton').addEventListener('click', function () {
+        items = collectItems();
+        items.push({ kind: 'Custom', description: '', quantity: 1 });
+        render();
+      });
+
+      list.addEventListener('click', function (event) {
+        var button = event.target.closest('.item-remove');
+        if (!button) return;
+        var row = button.closest('.item-row');
+        var index = Array.from(list.children).indexOf(row);
+        items = collectItems();
+        items.splice(index, 1);
+        render();
+      });
+
+      // Keep a description growing as the user types, rather than waiting
+      // for the next full render() to pick up its new height.
+      list.addEventListener('input', function (event) {
+        if (event.target.classList.contains('item-desc')) {
+          autosize(event.target);
+        }
+      });
+
+      // Always populate items_json right before submit, from whatever's
+      // currently in the DOM — never left blank, and never stale.
+      form.addEventListener('submit', function () {
+        input.value = JSON.stringify(collectItems());
+      });
+
+      render();
+    })();
+  </script>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">{{if $data.IsNew}}Create ticket{{else}}Save changes{{end}}</button>
+    <a class="btn ghost" href="{{if $data.IsNew}}/tickets{{else}}/ticket?id={{$t.Id}}{{end}}">Cancel</a>
+  </div>
+</form>
+{{end}}
+{{template "foot" .}}

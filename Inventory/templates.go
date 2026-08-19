@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
@@ -20,6 +21,17 @@ var templateFuncs = template.FuncMap{
 	"partConditions":  func() []string { return PartConditions },
 	"facilityOptions": func() []string { return FacilityOptions },
 	"appVersion":      func() string { return version },
+	"ticketStatuses":  func() []string { return TicketStatuses },
+	// json marshals a value for embedding inside an inline script block
+	// (e.g. seeding a form's JS with existing data). Safe against breaking
+	// out of the surrounding script tag: encoding/json's Marshal
+	// unicode-escapes angle brackets and ampersands by default, specifically
+	// so its output can be safely embedded in HTML — do not swap this for an
+	// Encoder with SetEscapeHTML(false).
+	"json": func(v interface{}) (template.JS, error) {
+		b, err := json.Marshal(v)
+		return template.JS(b), err
+	},
 }
 
 type Templates struct {
